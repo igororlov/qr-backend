@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         String publicBaseUrl,
+        String mailFrom,
         String adminEmail,
         String adminPassword,
         Jwt jwt,
@@ -18,4 +19,3 @@ public record AppProperties(
     public record Cors(List<String> allowedOrigins) {
     }
 }
-
