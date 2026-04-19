@@ -10,9 +10,14 @@ public class HomeController {
     Map<String, String> home() {
         return Map.of(
                 "name", "qr-backend",
-                "health", "/actuator/health",
+                "health", "/health",
+                "actuatorHealth", "/actuator/health",
                 "publicDemo", "/api/public/q/demo"
         );
     }
-}
 
+    @GetMapping("/health")
+    Map<String, String> health() {
+        return Map.of("status", "UP");
+    }
+}

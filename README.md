@@ -78,7 +78,7 @@ curl -s http://localhost:8080/api/public/q/demo
 Health:
 
 ```bash
-curl -s http://localhost:8080/actuator/health
+curl -s http://localhost:8080/health
 ```
 
 ## Frontend Integration
@@ -169,6 +169,7 @@ jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
 After deploy, check:
 
 ```text
+https://your-backend-domain/health
 https://your-backend-domain/actuator/health
 https://your-backend-domain/api/public/q/demo
 ```

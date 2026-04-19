@@ -20,6 +20,9 @@ server:
   address: ${SERVER_ADDRESS:0.0.0.0}
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
