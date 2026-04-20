@@ -160,7 +160,14 @@ public class QrCode extends AuditableEntity {
     }
 
     public void replaceActions(List<QrAction> newActions) {
+        appendActions(newActions);
+    }
+
+    public void clearActions() {
         actions.clear();
+    }
+
+    public void appendActions(List<QrAction> newActions) {
         newActions.forEach(action -> action.attachTo(this));
         actions.addAll(newActions);
     }

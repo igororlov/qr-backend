@@ -1,5 +1,6 @@
 package no.benidorm.qr.qrcode;
 
+import jakarta.persistence.EntityManager;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -24,17 +25,20 @@ public class QrCodeService {
     private final CompanyService companyService;
     private final AppProperties properties;
     private final QrImageService qrImageService;
+    private final EntityManager entityManager;
 
     public QrCodeService(
             QrCodeRepository qrCodes,
             CompanyService companyService,
             AppProperties properties,
-            QrImageService qrImageService
+            QrImageService qrImageService,
+            EntityManager entityManager
     ) {
         this.qrCodes = qrCodes;
         this.companyService = companyService;
         this.properties = properties;
         this.qrImageService = qrImageService;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +79,9 @@ public class QrCodeService {
         QrCode qrCode = getByCompany(company, qrCodeId);
         ensureSlugAvailable(request.slug(), qrCodeId);
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
-        qrCode.replaceActions(toActions(request.actions()));
+        qrCode.clearActions();
+        entityManager.flush();
+        qrCode.appendActions(toActions(request.actions()));
         return QrCodeResponse.from(qrCode);
     }
 
