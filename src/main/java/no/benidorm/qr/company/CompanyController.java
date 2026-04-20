@@ -6,7 +6,9 @@ import java.util.UUID;
 import no.benidorm.qr.company.CompanyDtos.CompanyRequest;
 import no.benidorm.qr.company.CompanyDtos.CompanyResponse;
 import no.benidorm.qr.security.CurrentUser;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,5 +43,11 @@ public class CompanyController {
             @Valid @RequestBody CompanyRequest request
     ) {
         return companyService.update(CurrentUser.from(authentication), companyId, request);
+    }
+
+    @DeleteMapping("/{companyId}")
+    ResponseEntity<Void> delete(Authentication authentication, @PathVariable UUID companyId) {
+        companyService.delete(CurrentUser.from(authentication), companyId);
+        return ResponseEntity.noContent().build();
     }
 }

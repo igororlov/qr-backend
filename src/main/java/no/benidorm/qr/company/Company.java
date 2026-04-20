@@ -74,4 +74,8 @@ public class Company extends AuditableEntity {
         this.logoUrl = logoUrl;
         this.active = active;
     }
+
+    public void changeOwner(AppUser owner) {
+        this.owner = owner;
+    }
 }
