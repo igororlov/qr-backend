@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +47,20 @@ public class QrCode extends AuditableEntity {
 
     @Column(nullable = false)
     private long scanCount;
+
+    @Column(nullable = false, length = 7)
+    private String qrForegroundColor = "#111111";
+
+    @Column(nullable = false, length = 7)
+    private String qrBackgroundColor = "#ffffff";
+
+    @Column(nullable = false)
+    private boolean qrLogoEnabled = true;
+
+    @Column(name = "qr_image_png", columnDefinition = "bytea")
+    private byte[] qrImagePng;
+
+    private Instant qrImageGeneratedAt;
 
     @OneToMany(mappedBy = "qrCode", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position asc")
@@ -100,6 +115,26 @@ public class QrCode extends AuditableEntity {
         return scanCount;
     }
 
+    public String getQrForegroundColor() {
+        return qrForegroundColor;
+    }
+
+    public String getQrBackgroundColor() {
+        return qrBackgroundColor;
+    }
+
+    public boolean isQrLogoEnabled() {
+        return qrLogoEnabled;
+    }
+
+    public byte[] getQrImagePng() {
+        return qrImagePng;
+    }
+
+    public Instant getQrImageGeneratedAt() {
+        return qrImageGeneratedAt;
+    }
+
     public List<QrAction> getActions() {
         return actions;
     }
@@ -111,6 +146,17 @@ public class QrCode extends AuditableEntity {
         this.label = label;
         this.logoUrl = logoUrl;
         this.active = active;
+    }
+
+    public void updateImageStyle(String foregroundColor, String backgroundColor, boolean logoEnabled) {
+        this.qrForegroundColor = foregroundColor;
+        this.qrBackgroundColor = backgroundColor;
+        this.qrLogoEnabled = logoEnabled;
+    }
+
+    public void storeQrImage(byte[] png) {
+        this.qrImagePng = png;
+        this.qrImageGeneratedAt = Instant.now();
     }
 
     public void replaceActions(List<QrAction> newActions) {

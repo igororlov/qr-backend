@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 import no.benidorm.qr.auth.AppUser;
 import no.benidorm.qr.common.AuditableEntity;
@@ -25,6 +26,14 @@ public class Company extends AuditableEntity {
 
     @Column(columnDefinition = "text")
     private String logoUrl;
+
+    @Column(length = 120)
+    private String logoContentType;
+
+    @Column(columnDefinition = "bytea")
+    private byte[] logoBytes;
+
+    private Instant logoUploadedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_user_id")
@@ -60,6 +69,18 @@ public class Company extends AuditableEntity {
         return logoUrl;
     }
 
+    public String getLogoContentType() {
+        return logoContentType;
+    }
+
+    public byte[] getLogoBytes() {
+        return logoBytes;
+    }
+
+    public Instant getLogoUploadedAt() {
+        return logoUploadedAt;
+    }
+
     public AppUser getOwner() {
         return owner;
     }
@@ -77,5 +98,12 @@ public class Company extends AuditableEntity {
 
     public void changeOwner(AppUser owner) {
         this.owner = owner;
+    }
+
+    public void storeLogo(String logoUrl, String contentType, byte[] bytes) {
+        this.logoUrl = logoUrl;
+        this.logoContentType = contentType;
+        this.logoBytes = bytes;
+        this.logoUploadedAt = Instant.now();
     }
 }

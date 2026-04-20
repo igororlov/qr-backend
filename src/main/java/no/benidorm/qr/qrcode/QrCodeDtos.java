@@ -46,6 +46,7 @@ public final class QrCodeDtos {
             String logoUrl,
             boolean active,
             long scanCount,
+            QrImageStyleResponse imageStyle,
             List<QrActionResponse> actions,
             Instant createdAt,
             Instant updatedAt
@@ -62,12 +63,38 @@ public final class QrCodeDtos {
                     qrCode.getLogoUrl(),
                     qrCode.isActive(),
                     qrCode.getScanCount(),
+                    QrImageStyleResponse.from(qrCode),
                     qrCode.getActions().stream()
                             .sorted(Comparator.comparingInt(QrAction::getPosition))
                             .map(QrActionResponse::from)
                             .toList(),
                     qrCode.getCreatedAt(),
                     qrCode.getUpdatedAt()
+            );
+        }
+    }
+
+    public record QrImageStyleRequest(
+            @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String foregroundColor,
+            @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String backgroundColor,
+            Boolean logoEnabled
+    ) {
+    }
+
+    public record QrImageStyleResponse(
+            String foregroundColor,
+            String backgroundColor,
+            boolean logoEnabled,
+            boolean imageGenerated,
+            Instant imageGeneratedAt
+    ) {
+        public static QrImageStyleResponse from(QrCode qrCode) {
+            return new QrImageStyleResponse(
+                    qrCode.getQrForegroundColor(),
+                    qrCode.getQrBackgroundColor(),
+                    qrCode.isQrLogoEnabled(),
+                    qrCode.getQrImagePng() != null,
+                    qrCode.getQrImageGeneratedAt()
             );
         }
     }

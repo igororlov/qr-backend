@@ -9,20 +9,31 @@ import no.benidorm.qr.common.BadRequestException;
 import no.benidorm.qr.common.NotFoundException;
 import no.benidorm.qr.company.CompanyDtos.CompanyRequest;
 import no.benidorm.qr.company.CompanyDtos.CompanyResponse;
+import no.benidorm.qr.config.AppProperties;
 import no.benidorm.qr.qrcode.QrCodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CompanyService {
+    private static final long MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
+
     private final CompanyRepository companies;
     private final AppUserRepository users;
     private final QrCodeRepository qrCodes;
+    private final AppProperties properties;
 
-    public CompanyService(CompanyRepository companies, AppUserRepository users, QrCodeRepository qrCodes) {
+    public CompanyService(
+            CompanyRepository companies,
+            AppUserRepository users,
+            QrCodeRepository qrCodes,
+            AppProperties properties
+    ) {
         this.companies = companies;
         this.users = users;
         this.qrCodes = qrCodes;
+        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +69,18 @@ public class CompanyService {
         companies.delete(company);
     }
 
+    @Transactional
+    public CompanyResponse uploadLogo(AppUser user, UUID id, MultipartFile file) {
+        Company company = getOwnedCompany(user, id);
+        validateLogo(file);
+        try {
+            company.storeLogo(publicLogoUrl(company), file.getContentType(), file.getBytes());
+            return CompanyResponse.from(company);
+        } catch (java.io.IOException ex) {
+            throw new BadRequestException("Could not read logo file");
+        }
+    }
+
     @Transactional(readOnly = true)
     public Company getOwnedCompany(AppUser user, UUID companyId) {
         if (user.getRole() == UserRole.SYSTEM_ADMIN) {
@@ -65,6 +88,15 @@ public class CompanyService {
         }
         return companies.findByIdAndOwner(companyId, user)
                 .orElseThrow(() -> new NotFoundException("Company not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Company getActiveCompany(UUID companyId) {
+        Company company = companies.findById(companyId).orElseThrow(() -> new NotFoundException("Company not found"));
+        if (!company.isActive()) {
+            throw new NotFoundException("Company not found");
+        }
+        return company;
     }
 
     private void ensureSlugAvailable(String slug, UUID currentCompanyId) {
@@ -87,5 +119,22 @@ public class CompanyService {
             return currentUser;
         }
         return users.findById(ownerUserId).orElseThrow(() -> new NotFoundException("Owner user not found"));
+    }
+
+    private void validateLogo(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Logo file is required");
+        }
+        if (file.getSize() > MAX_LOGO_SIZE_BYTES) {
+            throw new BadRequestException("Logo file is too large");
+        }
+        String contentType = file.getContentType();
+        if (!List.of("image/png", "image/jpeg", "image/webp").contains(contentType)) {
+            throw new BadRequestException("Logo must be a PNG, JPEG, or WebP image");
+        }
+    }
+
+    private String publicLogoUrl(Company company) {
+        return properties.publicBaseUrl().replaceAll("/+$", "") + "/api/public/companies/" + company.getId() + "/logo";
     }
 }

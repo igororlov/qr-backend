@@ -14,6 +14,7 @@ import no.benidorm.qr.config.AppProperties;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrActionRequest;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeRequest;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeResponse;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrImageStyleRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +23,18 @@ public class QrCodeService {
     private final QrCodeRepository qrCodes;
     private final CompanyService companyService;
     private final AppProperties properties;
+    private final QrImageService qrImageService;
 
-    public QrCodeService(QrCodeRepository qrCodes, CompanyService companyService, AppProperties properties) {
+    public QrCodeService(
+            QrCodeRepository qrCodes,
+            CompanyService companyService,
+            AppProperties properties,
+            QrImageService qrImageService
+    ) {
         this.qrCodes = qrCodes;
         this.companyService = companyService;
         this.properties = properties;
+        this.qrImageService = qrImageService;
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +77,29 @@ public class QrCodeService {
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
         qrCode.replaceActions(toActions(request.actions()));
         return QrCodeResponse.from(qrCode);
+    }
+
+    @Transactional
+    public QrCodeResponse generateImage(AppUser user, UUID companyId, UUID qrCodeId, QrImageStyleRequest request) {
+        Company company = companyService.getOwnedCompany(user, companyId);
+        QrCode qrCode = getByCompany(company, qrCodeId);
+        qrCode.updateImageStyle(
+                request.foregroundColor().toLowerCase(),
+                request.backgroundColor().toLowerCase(),
+                activeOrTrue(request.logoEnabled())
+        );
+        qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
+        return QrCodeResponse.from(qrCode);
+    }
+
+    @Transactional
+    public byte[] getOrCreateImage(AppUser user, UUID companyId, UUID qrCodeId) {
+        Company company = companyService.getOwnedCompany(user, companyId);
+        QrCode qrCode = getByCompany(company, qrCodeId);
+        if (qrCode.getQrImagePng() == null) {
+            qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
+        }
+        return qrCode.getQrImagePng();
     }
 
     @Transactional(readOnly = true)

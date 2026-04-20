@@ -3,12 +3,12 @@ package no.benidorm.qr.qrcode;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
-import no.benidorm.qr.company.Company;
-import no.benidorm.qr.company.CompanyService;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeRequest;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeResponse;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrImageStyleRequest;
 import no.benidorm.qr.security.CurrentUser;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,13 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/companies/{companyId}/qr-codes")
 public class QrCodeController {
     private final QrCodeService qrCodeService;
-    private final CompanyService companyService;
-    private final QrImageService qrImageService;
 
-    public QrCodeController(QrCodeService qrCodeService, CompanyService companyService, QrImageService qrImageService) {
+    public QrCodeController(QrCodeService qrCodeService) {
         this.qrCodeService = qrCodeService;
-        this.companyService = companyService;
-        this.qrImageService = qrImageService;
     }
 
     @GetMapping
@@ -60,10 +56,21 @@ public class QrCodeController {
         return qrCodeService.update(CurrentUser.from(authentication), companyId, qrCodeId, request);
     }
 
+    @PostMapping("/{qrCodeId}/image")
+    QrCodeResponse generateImage(
+            Authentication authentication,
+            @PathVariable UUID companyId,
+            @PathVariable UUID qrCodeId,
+            @Valid @RequestBody QrImageStyleRequest request
+    ) {
+        return qrCodeService.generateImage(CurrentUser.from(authentication), companyId, qrCodeId, request);
+    }
+
     @GetMapping(value = "/{qrCodeId}/png", produces = MediaType.IMAGE_PNG_VALUE)
-    byte[] png(Authentication authentication, @PathVariable UUID companyId, @PathVariable UUID qrCodeId) {
-        Company company = companyService.getOwnedCompany(CurrentUser.from(authentication), companyId);
-        QrCode qrCode = qrCodeService.getByCompany(company, qrCodeId);
-        return qrImageService.png(qrCodeService.publicUrl(qrCode), qrCode.getLabel());
+    ResponseEntity<byte[]> png(Authentication authentication, @PathVariable UUID companyId, @PathVariable UUID qrCodeId) {
+        byte[] png = qrCodeService.getOrCreateImage(CurrentUser.from(authentication), companyId, qrCodeId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(png);
     }
 }
