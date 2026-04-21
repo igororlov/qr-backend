@@ -4,6 +4,7 @@ import no.benidorm.qr.qrcode.QrFormSubmission;
 import no.benidorm.qr.config.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -45,8 +46,14 @@ public class SubmissionMailService {
                 nullToDash(submission.getSenderPhone()),
                 submission.getMessage()
         ));
-        mailSender.send(message);
-        log.info("Sent QR form submission {} to {}", submission.getId(), ownerEmail);
+        try {
+            log.info("Sending QR form submission {} to {}", submission.getId(), ownerEmail);
+            mailSender.send(message);
+            log.info("Sent QR form submission {} to {}", submission.getId(), ownerEmail);
+        } catch (MailException ex) {
+            log.error("Could not send QR form submission {} to {}", submission.getId(), ownerEmail, ex);
+            throw ex;
+        }
     }
 
     private String nullToDash(String value) {
