@@ -25,6 +25,7 @@ public final class PublicDtos {
             String label,
             String logoUrl,
             String buttonColor,
+            String textColor,
             List<PublicActionResponse> actions
     ) {
         public static PublicQrResponse from(QrCode qrCode) {
@@ -39,6 +40,7 @@ public final class PublicDtos {
                     qrCode.getLabel(),
                     qrCode.getLogoUrl(),
                     qrCode.getButtonColor(),
+                    qrCode.getTextColor(),
                     qrCode.getActions().stream()
                             .filter(QrAction::isActive)
                             .sorted(Comparator.comparingInt(QrAction::getPosition))

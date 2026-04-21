@@ -26,6 +26,7 @@ public final class CompanyDtos {
             String logoUrl,
             boolean active,
             UUID ownerUserId,
+            String ownerFullName,
             String ownerEmail,
             Instant createdAt,
             Instant updatedAt
@@ -38,6 +39,7 @@ public final class CompanyDtos {
                     company.getLogoUrl(),
                     company.isActive(),
                     company.getOwner().getId(),
+                    company.getOwner().getFullName(),
                     company.getOwner().getEmail(),
                     company.getCreatedAt(),
                     company.getUpdatedAt()
