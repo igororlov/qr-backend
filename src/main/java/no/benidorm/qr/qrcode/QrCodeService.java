@@ -69,6 +69,7 @@ public class QrCodeService {
                 request.logoUrl()
         );
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        applyImageStyle(qrCode, request);
         qrCode.replaceActions(toActions(request.actions()));
         return QrCodeResponse.from(qrCodes.save(qrCode));
     }
@@ -79,6 +80,7 @@ public class QrCodeService {
         QrCode qrCode = getByCompany(company, qrCodeId);
         ensureSlugAvailable(request.slug(), qrCodeId);
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        applyImageStyle(qrCode, request);
         qrCode.clearActions();
         entityManager.flush();
         qrCode.appendActions(toActions(request.actions()));
@@ -102,6 +104,21 @@ public class QrCodeService {
     public byte[] getOrCreateImage(AppUser user, UUID companyId, UUID qrCodeId) {
         Company company = companyService.getOwnedCompany(user, companyId);
         QrCode qrCode = getByCompany(company, qrCodeId);
+        if (qrCode.getQrImagePng() == null) {
+            qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
+        }
+        return qrCode.getQrImagePng();
+    }
+
+    @Transactional(readOnly = true)
+    public QrCode getPublicBySlug(String slug) {
+        return qrCodes.findWithActionsBySlugAndActiveTrue(slug)
+                .orElseThrow(() -> new NotFoundException("QR code not found"));
+    }
+
+    @Transactional
+    public byte[] getOrCreatePublicImage(String slug) {
+        QrCode qrCode = getPublicBySlug(slug);
         if (qrCode.getQrImagePng() == null) {
             qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
         }
@@ -154,5 +171,16 @@ public class QrCodeService {
 
     private boolean activeOrTrue(Boolean active) {
         return active == null || active;
+    }
+
+    private void applyImageStyle(QrCode qrCode, QrCodeRequest request) {
+        if (request.imageStyle() == null) {
+            return;
+        }
+        qrCode.updateImageStyle(
+                request.imageStyle().foregroundColor().toLowerCase(),
+                request.imageStyle().backgroundColor().toLowerCase(),
+                activeOrTrue(request.imageStyle().logoEnabled())
+        );
     }
 }

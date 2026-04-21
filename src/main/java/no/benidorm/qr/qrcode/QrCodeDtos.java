@@ -22,6 +22,7 @@ public final class QrCodeDtos {
             @Size(max = 120) String label,
             @Size(max = 2000) String logoUrl,
             Boolean active,
+            @Valid QrImageStyleRequest imageStyle,
             @NotEmpty @Size(min = 1, max = 10) List<@Valid QrActionRequest> actions
     ) {
     }

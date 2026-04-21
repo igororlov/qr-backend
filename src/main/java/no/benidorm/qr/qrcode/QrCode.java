@@ -152,6 +152,8 @@ public class QrCode extends AuditableEntity {
         this.qrForegroundColor = foregroundColor;
         this.qrBackgroundColor = backgroundColor;
         this.qrLogoEnabled = logoEnabled;
+        this.qrImagePng = null;
+        this.qrImageGeneratedAt = null;
     }
 
     public void storeQrImage(byte[] png) {
