@@ -4,20 +4,6 @@ spring:
     username: ${PGUSER}
     password: ${PGPASSWORD}
     driver-class-name: org.postgresql.Driver
-  mail:
-    host: ${SMTP_HOST}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME}
-    password: ${SMTP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          connectiontimeout: 10000
-          timeout: 10000
-          auth: true
-          starttls:
-            enable: true
-          writetimeout: 10000
 
 server:
   forward-headers-strategy: framework
@@ -29,6 +15,7 @@ logging:
 app:
   public-base-url: ${APP_PUBLIC_BASE_URL}
   mail-from: ${APP_MAIL_FROM}
+  resend-api-key: ${RESEND_API_KEY:${SMTP_PASSWORD:}}
   admin-email: ${APP_ADMIN_EMAIL}
   admin-password: ${APP_ADMIN_PASSWORD}
   jwt:
