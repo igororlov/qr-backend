@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class QrCodeService {
+    private static final Set<String> ALLOWED_FORM_TYPES = Set.of("contact", "feedback", "lead");
+
     private final QrCodeRepository qrCodes;
     private final CompanyService companyService;
     private final AppProperties properties;
@@ -143,9 +145,9 @@ public class QrCodeService {
                 .sorted(Comparator.comparingInt(QrActionRequest::position))
                 .map(request -> new QrAction(
                         request.position(),
-                        request.label(),
+                        request.label().trim(),
                         request.type(),
-                        request.value(),
+                        normalizeActionValue(request),
                         activeOrTrue(request.active())
                 ))
                 .toList();
@@ -160,7 +162,18 @@ public class QrCodeService {
             if (!positions.add(action.position())) {
                 throw new BadRequestException("Action positions must be unique");
             }
+            if (action.type() == QrActionType.FORM && !ALLOWED_FORM_TYPES.contains(action.value().trim().toLowerCase())) {
+                throw new BadRequestException("Form type must be one of: contact, feedback, lead");
+            }
         }
+    }
+
+    private String normalizeActionValue(QrActionRequest request) {
+        String value = request.value().trim();
+        if (request.type() == QrActionType.FORM) {
+            return value.toLowerCase();
+        }
+        return value;
     }
 
     private void ensureSlugAvailable(String slug, UUID currentQrCodeId) {
