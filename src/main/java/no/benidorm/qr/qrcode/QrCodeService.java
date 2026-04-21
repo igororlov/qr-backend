@@ -69,6 +69,7 @@ public class QrCodeService {
                 request.logoUrl()
         );
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        qrCode.updateButtonColor(request.buttonColor().toLowerCase());
         applyImageStyle(qrCode, request);
         qrCode.replaceActions(toActions(request.actions()));
         return QrCodeResponse.from(qrCodes.save(qrCode));
@@ -80,6 +81,7 @@ public class QrCodeService {
         QrCode qrCode = getByCompany(company, qrCodeId);
         ensureSlugAvailable(request.slug(), qrCodeId);
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        qrCode.updateButtonColor(request.buttonColor().toLowerCase());
         applyImageStyle(qrCode, request);
         qrCode.clearActions();
         entityManager.flush();

@@ -22,6 +22,7 @@ public final class QrCodeDtos {
             @Size(max = 120) String label,
             @Size(max = 2000) String logoUrl,
             Boolean active,
+            @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String buttonColor,
             @Valid QrImageStyleRequest imageStyle,
             @NotEmpty @Size(min = 1, max = 10) List<@Valid QrActionRequest> actions
     ) {
@@ -45,6 +46,7 @@ public final class QrCodeDtos {
             String subtitle,
             String label,
             String logoUrl,
+            String buttonColor,
             boolean active,
             long scanCount,
             QrImageStyleResponse imageStyle,
@@ -62,6 +64,7 @@ public final class QrCodeDtos {
                     qrCode.getSubtitle(),
                     qrCode.getLabel(),
                     qrCode.getLogoUrl(),
+                    qrCode.getButtonColor(),
                     qrCode.isActive(),
                     qrCode.getScanCount(),
                     QrImageStyleResponse.from(qrCode),

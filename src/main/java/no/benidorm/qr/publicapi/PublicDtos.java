@@ -24,6 +24,7 @@ public final class PublicDtos {
             String subtitle,
             String label,
             String logoUrl,
+            String buttonColor,
             List<PublicActionResponse> actions
     ) {
         public static PublicQrResponse from(QrCode qrCode) {
@@ -37,6 +38,7 @@ public final class PublicDtos {
                     qrCode.getSubtitle(),
                     qrCode.getLabel(),
                     qrCode.getLogoUrl(),
+                    qrCode.getButtonColor(),
                     qrCode.getActions().stream()
                             .filter(QrAction::isActive)
                             .sorted(Comparator.comparingInt(QrAction::getPosition))
@@ -78,4 +80,3 @@ public final class PublicDtos {
     public record TrackClickResponse(String status) {
     }
 }
-

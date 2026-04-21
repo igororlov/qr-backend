@@ -49,6 +49,9 @@ public class QrCode extends AuditableEntity {
     private long scanCount;
 
     @Column(nullable = false, length = 7)
+    private String buttonColor = "#187466";
+
+    @Column(nullable = false, length = 7)
     private String qrForegroundColor = "#111111";
 
     @Column(nullable = false, length = 7)
@@ -119,6 +122,10 @@ public class QrCode extends AuditableEntity {
         return qrForegroundColor;
     }
 
+    public String getButtonColor() {
+        return buttonColor;
+    }
+
     public String getQrBackgroundColor() {
         return qrBackgroundColor;
     }
@@ -146,6 +153,10 @@ public class QrCode extends AuditableEntity {
         this.label = label;
         this.logoUrl = logoUrl;
         this.active = active;
+    }
+
+    public void updateButtonColor(String buttonColor) {
+        this.buttonColor = buttonColor;
     }
 
     public void updateImageStyle(String foregroundColor, String backgroundColor, boolean logoEnabled) {
