@@ -100,18 +100,25 @@ public class QrCodeService {
                 request.backgroundColor().toLowerCase(),
                 activeOrTrue(request.logoEnabled())
         );
-        qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
+        QrImageService.GeneratedQrImage image = qrImageService.generate(qrCode, publicUrl(qrCode));
+        qrCode.storeQrImage(image.png(), image.svg());
         return QrCodeResponse.from(qrCode);
     }
 
     @Transactional
-    public byte[] getOrCreateImage(AppUser user, UUID companyId, UUID qrCodeId) {
+    public byte[] getOrCreateImagePng(AppUser user, UUID companyId, UUID qrCodeId) {
         Company company = companyService.getOwnedCompany(user, companyId);
         QrCode qrCode = getByCompany(company, qrCodeId);
-        if (qrCode.getQrImagePng() == null) {
-            qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
-        }
+        ensureGenerated(qrCode);
         return qrCode.getQrImagePng();
+    }
+
+    @Transactional
+    public byte[] getOrCreateImageSvg(AppUser user, UUID companyId, UUID qrCodeId) {
+        Company company = companyService.getOwnedCompany(user, companyId);
+        QrCode qrCode = getByCompany(company, qrCodeId);
+        ensureGenerated(qrCode);
+        return qrCode.getQrImageSvg().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     @Transactional(readOnly = true)
@@ -123,10 +130,15 @@ public class QrCodeService {
     @Transactional
     public byte[] getOrCreatePublicImage(String slug) {
         QrCode qrCode = getPublicBySlug(slug);
-        if (qrCode.getQrImagePng() == null) {
-            qrCode.storeQrImage(qrImageService.png(qrCode, publicUrl(qrCode)));
-        }
+        ensureGenerated(qrCode);
         return qrCode.getQrImagePng();
+    }
+
+    @Transactional
+    public byte[] getOrCreatePublicSvg(String slug) {
+        QrCode qrCode = getPublicBySlug(slug);
+        ensureGenerated(qrCode);
+        return qrCode.getQrImageSvg().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     @Transactional(readOnly = true)
@@ -186,6 +198,13 @@ public class QrCodeService {
 
     private boolean activeOrTrue(Boolean active) {
         return active == null || active;
+    }
+
+    private void ensureGenerated(QrCode qrCode) {
+        if (qrCode.getQrImagePng() == null || qrCode.getQrImageSvg() == null) {
+            QrImageService.GeneratedQrImage image = qrImageService.generate(qrCode, publicUrl(qrCode));
+            qrCode.storeQrImage(image.png(), image.svg());
+        }
     }
 
     private void applyImageStyle(QrCode qrCode, QrCodeRequest request) {

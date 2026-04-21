@@ -63,6 +63,9 @@ public class QrCode extends AuditableEntity {
     @Column(name = "qr_image_png", columnDefinition = "bytea")
     private byte[] qrImagePng;
 
+    @Column(name = "qr_image_svg", columnDefinition = "text")
+    private String qrImageSvg;
+
     private Instant qrImageGeneratedAt;
 
     @OneToMany(mappedBy = "qrCode", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -142,6 +145,10 @@ public class QrCode extends AuditableEntity {
         return qrImageGeneratedAt;
     }
 
+    public String getQrImageSvg() {
+        return qrImageSvg;
+    }
+
     public List<QrAction> getActions() {
         return actions;
     }
@@ -164,11 +171,13 @@ public class QrCode extends AuditableEntity {
         this.qrBackgroundColor = backgroundColor;
         this.qrLogoEnabled = logoEnabled;
         this.qrImagePng = null;
+        this.qrImageSvg = null;
         this.qrImageGeneratedAt = null;
     }
 
-    public void storeQrImage(byte[] png) {
+    public void storeQrImage(byte[] png, String svg) {
         this.qrImagePng = png;
+        this.qrImageSvg = svg;
         this.qrImageGeneratedAt = Instant.now();
     }
 

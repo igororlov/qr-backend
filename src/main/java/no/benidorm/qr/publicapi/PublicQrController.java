@@ -39,6 +39,13 @@ public class PublicQrController {
                 .body(qrCodeService.getOrCreatePublicImage(slug));
     }
 
+    @GetMapping(value = "/svg", produces = "image/svg+xml")
+    ResponseEntity<byte[]> svg(@PathVariable String slug) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("image/svg+xml"))
+                .body(qrCodeService.getOrCreatePublicSvg(slug));
+    }
+
     @PostMapping("/actions/{actionId}/click")
     TrackClickResponse trackClick(@PathVariable String slug, @PathVariable UUID actionId) {
         return publicQrService.trackClick(slug, actionId);

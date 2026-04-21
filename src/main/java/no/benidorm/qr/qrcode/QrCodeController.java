@@ -68,9 +68,17 @@ public class QrCodeController {
 
     @GetMapping(value = "/{qrCodeId}/png", produces = MediaType.IMAGE_PNG_VALUE)
     ResponseEntity<byte[]> png(Authentication authentication, @PathVariable UUID companyId, @PathVariable UUID qrCodeId) {
-        byte[] png = qrCodeService.getOrCreateImage(CurrentUser.from(authentication), companyId, qrCodeId);
+        byte[] png = qrCodeService.getOrCreateImagePng(CurrentUser.from(authentication), companyId, qrCodeId);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
                 .body(png);
+    }
+
+    @GetMapping(value = "/{qrCodeId}/svg", produces = "image/svg+xml")
+    ResponseEntity<byte[]> svg(Authentication authentication, @PathVariable UUID companyId, @PathVariable UUID qrCodeId) {
+        byte[] svg = qrCodeService.getOrCreateImageSvg(CurrentUser.from(authentication), companyId, qrCodeId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("image/svg+xml"))
+                .body(svg);
     }
 }
