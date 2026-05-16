@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 import no.benidorm.qr.common.AuditableEntity;
 
@@ -30,6 +31,15 @@ public class AppUser extends AuditableEntity {
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    @Column
+    private Instant emailVerifiedAt;
+
+    @Column(length = 128)
+    private String emailVerificationTokenHash;
+
+    @Column
+    private Instant emailVerificationExpiresAt;
 
     protected AppUser() {
     }
@@ -65,5 +75,22 @@ public class AppUser extends AuditableEntity {
     public boolean isEnabled() {
         return enabled;
     }
-}
 
+    public Instant getEmailVerificationExpiresAt() {
+        return emailVerificationExpiresAt;
+    }
+
+    public void startEmailVerification(String tokenHash, Instant expiresAt) {
+        this.enabled = false;
+        this.emailVerifiedAt = null;
+        this.emailVerificationTokenHash = tokenHash;
+        this.emailVerificationExpiresAt = expiresAt;
+    }
+
+    public void verifyEmail() {
+        this.enabled = true;
+        this.emailVerifiedAt = Instant.now();
+        this.emailVerificationTokenHash = null;
+        this.emailVerificationExpiresAt = null;
+    }
+}
