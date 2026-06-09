@@ -42,15 +42,23 @@ public class QrImageService {
                 qrCode.getLabel(),
                 qrCode.getQrForegroundColor(),
                 qrCode.getQrBackgroundColor(),
+                qrCode.isQrBackgroundTransparent(),
                 logo
         );
     }
 
     public GeneratedQrImage generate(String url, String label) {
-        return generate(url, label, "#111111", "#ffffff", null);
+        return generate(url, label, "#111111", "#ffffff", false, null);
     }
 
-    private GeneratedQrImage generate(String url, String label, String foregroundHex, String backgroundHex, LogoAsset logo) {
+    private GeneratedQrImage generate(
+            String url,
+            String label,
+            String foregroundHex,
+            String backgroundHex,
+            boolean backgroundTransparent,
+            LogoAsset logo
+    ) {
         try {
             QRCodeWriter writer = new QRCodeWriter();
             BitMatrix matrix = writer.encode(url, BarcodeFormat.QR_CODE, SIZE, SIZE, Map.of(
@@ -59,11 +67,17 @@ public class QrImageService {
             ));
             Color foreground = Color.decode(foregroundHex);
             Color background = Color.decode(backgroundHex);
-            BufferedImage image = new BufferedImage(SIZE, SIZE + LABEL_HEIGHT, BufferedImage.TYPE_INT_RGB);
+            BufferedImage image = new BufferedImage(
+                    SIZE,
+                    SIZE + LABEL_HEIGHT,
+                    backgroundTransparent ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB
+            );
             Graphics2D graphics = image.createGraphics();
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.setColor(background);
-            graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+            if (!backgroundTransparent) {
+                graphics.setColor(background);
+                graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
+            }
             drawMatrix(graphics, matrix, foreground);
             drawLogo(graphics, logo == null ? null : logo.image(), background);
             drawLabel(graphics, label, foreground);
@@ -73,14 +87,21 @@ public class QrImageService {
             ImageIO.write(image, "png", out);
             return new GeneratedQrImage(
                     out.toByteArray(),
-                    svg(matrix, label, foregroundHex, backgroundHex, logo)
+                    svg(matrix, label, foregroundHex, backgroundHex, backgroundTransparent, logo)
             );
         } catch (IllegalArgumentException | WriterException | IOException ex) {
             throw new BadRequestException("Could not generate QR image");
         }
     }
 
-    private String svg(BitMatrix matrix, String label, String foregroundHex, String backgroundHex, LogoAsset logo) {
+    private String svg(
+            BitMatrix matrix,
+            String label,
+            String foregroundHex,
+            String backgroundHex,
+            boolean backgroundTransparent,
+            LogoAsset logo
+    ) {
         StringBuilder svg = new StringBuilder();
         svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ")
                 .append(SIZE)
@@ -91,7 +112,9 @@ public class QrImageService {
                 .append("\" height=\"")
                 .append(SIZE + LABEL_HEIGHT)
                 .append("\" fill=\"none\">");
-        svg.append("<rect width=\"100%\" height=\"100%\" fill=\"").append(escape(foregroundOrBackground(backgroundHex))).append("\"/>");
+        if (!backgroundTransparent) {
+            svg.append("<rect width=\"100%\" height=\"100%\" fill=\"").append(escape(foregroundOrBackground(backgroundHex))).append("\"/>");
+        }
         svg.append("<g fill=\"").append(escape(foregroundOrBackground(foregroundHex))).append("\">");
         for (int y = 0; y < matrix.getHeight(); y++) {
             for (int x = 0; x < matrix.getWidth(); x++) {

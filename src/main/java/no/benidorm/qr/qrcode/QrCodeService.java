@@ -98,6 +98,7 @@ public class QrCodeService {
         qrCode.updateImageStyle(
                 request.foregroundColor().toLowerCase(),
                 request.backgroundColor().toLowerCase(),
+                Boolean.TRUE.equals(request.backgroundTransparent()),
                 activeOrTrue(request.logoEnabled())
         );
         QrImageService.GeneratedQrImage image = qrImageService.generate(qrCode, publicUrl(qrCode));
@@ -214,6 +215,7 @@ public class QrCodeService {
         qrCode.updateImageStyle(
                 request.imageStyle().foregroundColor().toLowerCase(),
                 request.imageStyle().backgroundColor().toLowerCase(),
+                Boolean.TRUE.equals(request.imageStyle().backgroundTransparent()),
                 activeOrTrue(request.imageStyle().logoEnabled())
         );
     }

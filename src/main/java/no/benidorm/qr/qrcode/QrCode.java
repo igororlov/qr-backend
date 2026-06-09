@@ -61,6 +61,9 @@ public class QrCode extends AuditableEntity {
     private String qrBackgroundColor = "#ffffff";
 
     @Column(nullable = false)
+    private boolean qrBackgroundTransparent;
+
+    @Column(nullable = false)
     private boolean qrLogoEnabled = true;
 
     @Column(name = "qr_image_png", columnDefinition = "bytea")
@@ -140,6 +143,10 @@ public class QrCode extends AuditableEntity {
         return qrBackgroundColor;
     }
 
+    public boolean isQrBackgroundTransparent() {
+        return qrBackgroundTransparent;
+    }
+
     public boolean isQrLogoEnabled() {
         return qrLogoEnabled;
     }
@@ -174,9 +181,10 @@ public class QrCode extends AuditableEntity {
         this.textColor = textColor;
     }
 
-    public void updateImageStyle(String foregroundColor, String backgroundColor, boolean logoEnabled) {
+    public void updateImageStyle(String foregroundColor, String backgroundColor, boolean backgroundTransparent, boolean logoEnabled) {
         this.qrForegroundColor = foregroundColor;
         this.qrBackgroundColor = backgroundColor;
+        this.qrBackgroundTransparent = backgroundTransparent;
         this.qrLogoEnabled = logoEnabled;
         this.qrImagePng = null;
         this.qrImageSvg = null;

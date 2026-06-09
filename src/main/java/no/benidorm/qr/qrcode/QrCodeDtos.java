@@ -84,6 +84,7 @@ public final class QrCodeDtos {
     public record QrImageStyleRequest(
             @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String foregroundColor,
             @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String backgroundColor,
+            Boolean backgroundTransparent,
             Boolean logoEnabled
     ) {
     }
@@ -91,6 +92,7 @@ public final class QrCodeDtos {
     public record QrImageStyleResponse(
             String foregroundColor,
             String backgroundColor,
+            boolean backgroundTransparent,
             boolean logoEnabled,
             boolean imageGenerated,
             Instant imageGeneratedAt
@@ -99,6 +101,7 @@ public final class QrCodeDtos {
             return new QrImageStyleResponse(
                     qrCode.getQrForegroundColor(),
                     qrCode.getQrBackgroundColor(),
+                    qrCode.isQrBackgroundTransparent(),
                     qrCode.isQrLogoEnabled(),
                     qrCode.getQrImagePng() != null,
                     qrCode.getQrImageGeneratedAt()
