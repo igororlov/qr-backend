@@ -27,6 +27,18 @@ public class Company extends AuditableEntity {
     @Column(columnDefinition = "text")
     private String logoUrl;
 
+    @Column(length = 9)
+    private String organizationNumber;
+
+    @Column(length = 255)
+    private String addressLine;
+
+    @Column(length = 20)
+    private String postalCode;
+
+    @Column(length = 120)
+    private String postalPlace;
+
     @Column(length = 120)
     private String logoContentType;
 
@@ -69,6 +81,22 @@ public class Company extends AuditableEntity {
         return logoUrl;
     }
 
+    public String getOrganizationNumber() {
+        return organizationNumber;
+    }
+
+    public String getAddressLine() {
+        return addressLine;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public String getPostalPlace() {
+        return postalPlace;
+    }
+
     public String getLogoContentType() {
         return logoContentType;
     }
@@ -94,6 +122,18 @@ public class Company extends AuditableEntity {
         this.slug = slug;
         this.logoUrl = logoUrl;
         this.active = active;
+    }
+
+    public void updateRegistryDetails(
+            String organizationNumber,
+            String addressLine,
+            String postalCode,
+            String postalPlace
+    ) {
+        this.organizationNumber = organizationNumber;
+        this.addressLine = addressLine;
+        this.postalCode = postalCode;
+        this.postalPlace = postalPlace;
     }
 
     public void changeOwner(AppUser owner) {

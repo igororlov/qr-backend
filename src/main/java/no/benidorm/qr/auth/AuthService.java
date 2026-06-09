@@ -53,7 +53,14 @@ public class AuthService {
         );
         user.startEmailVerification(hashToken(token), Instant.now().plus(EMAIL_VERIFICATION_TTL));
         AppUser savedUser = users.save(user);
-        companies.save(new Company(request.companyName().trim(), uniqueCompanySlug(request.companyName()), null, savedUser));
+        Company company = new Company(request.companyName().trim(), uniqueCompanySlug(request.companyName()), null, savedUser);
+        company.updateRegistryDetails(
+                emptyToNull(request.organizationNumber()),
+                emptyToNull(request.addressLine()),
+                emptyToNull(request.postalCode()),
+                emptyToNull(request.postalPlace())
+        );
+        companies.save(company);
         emailVerificationMailService.send(savedUser, token, EMAIL_VERIFICATION_TTL);
         return savedUser;
     }
@@ -108,5 +115,12 @@ public class AuthService {
             normalized = normalized.substring(0, 120).replaceAll("-+$", "");
         }
         return normalized.isBlank() ? "company" : normalized;
+    }
+
+    private String emptyToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

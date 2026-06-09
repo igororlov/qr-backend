@@ -2,6 +2,7 @@ package no.benidorm.qr.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
@@ -19,6 +20,10 @@ public final class AuthDtos {
             @Email @NotBlank String email,
             @NotBlank @Size(max = 160) String fullName,
             @NotBlank @Size(max = 160) String companyName,
+            @Pattern(regexp = "^$|^[0-9]{9}$") String organizationNumber,
+            @Size(max = 255) String addressLine,
+            @Size(max = 20) String postalCode,
+            @Size(max = 120) String postalPlace,
             @NotBlank @Size(min = 8, max = 200) String password
     ) {
     }

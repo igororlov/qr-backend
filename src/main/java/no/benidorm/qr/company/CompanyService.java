@@ -46,6 +46,12 @@ public class CompanyService {
         AppUser owner = resolveOwner(user, request.ownerUserId());
         Company company = companies.save(new Company(request.name(), request.slug(), request.logoUrl(), owner));
         company.update(request.name(), request.slug(), request.logoUrl(), activeOrTrue(request.active()));
+        company.updateRegistryDetails(
+                emptyToNull(request.organizationNumber()),
+                emptyToNull(request.addressLine()),
+                emptyToNull(request.postalCode()),
+                emptyToNull(request.postalPlace())
+        );
         return toResponse(company);
     }
 
@@ -54,6 +60,12 @@ public class CompanyService {
         Company company = getOwnedCompany(user, id);
         ensureSlugAvailable(request.slug(), id);
         company.update(request.name(), request.slug(), request.logoUrl(), activeOrTrue(request.active()));
+        company.updateRegistryDetails(
+                emptyToNull(request.organizationNumber()),
+                emptyToNull(request.addressLine()),
+                emptyToNull(request.postalCode()),
+                emptyToNull(request.postalPlace())
+        );
         company.changeOwner(resolveOwner(user, request.ownerUserId()));
         return toResponse(company);
     }
@@ -137,6 +149,13 @@ public class CompanyService {
 
     private String publicLogoUrl(Company company) {
         return "/api/public/companies/" + company.getId() + "/logo";
+    }
+
+    private String emptyToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private CompanyResponse toResponse(Company company) {
