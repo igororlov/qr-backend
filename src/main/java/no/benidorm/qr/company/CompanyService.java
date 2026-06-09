@@ -9,7 +9,6 @@ import no.benidorm.qr.common.BadRequestException;
 import no.benidorm.qr.common.NotFoundException;
 import no.benidorm.qr.company.CompanyDtos.CompanyRequest;
 import no.benidorm.qr.company.CompanyDtos.CompanyResponse;
-import no.benidorm.qr.config.AppProperties;
 import no.benidorm.qr.qrcode.QrCodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,18 +21,15 @@ public class CompanyService {
     private final CompanyRepository companies;
     private final AppUserRepository users;
     private final QrCodeRepository qrCodes;
-    private final AppProperties properties;
 
     public CompanyService(
             CompanyRepository companies,
             AppUserRepository users,
-            QrCodeRepository qrCodes,
-            AppProperties properties
+            QrCodeRepository qrCodes
     ) {
         this.companies = companies;
         this.users = users;
         this.qrCodes = qrCodes;
-        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +37,7 @@ public class CompanyService {
         List<Company> result = user.getRole() == UserRole.SYSTEM_ADMIN
                 ? companies.findAllByOrderByCreatedAtDesc()
                 : companies.findByOwnerOrderByCreatedAtDesc(user);
-        return result.stream().map(CompanyResponse::from).toList();
+        return result.stream().map(this::toResponse).toList();
     }
 
     @Transactional
@@ -50,7 +46,7 @@ public class CompanyService {
         AppUser owner = resolveOwner(user, request.ownerUserId());
         Company company = companies.save(new Company(request.name(), request.slug(), request.logoUrl(), owner));
         company.update(request.name(), request.slug(), request.logoUrl(), activeOrTrue(request.active()));
-        return CompanyResponse.from(company);
+        return toResponse(company);
     }
 
     @Transactional
@@ -59,7 +55,7 @@ public class CompanyService {
         ensureSlugAvailable(request.slug(), id);
         company.update(request.name(), request.slug(), request.logoUrl(), activeOrTrue(request.active()));
         company.changeOwner(resolveOwner(user, request.ownerUserId()));
-        return CompanyResponse.from(company);
+        return toResponse(company);
     }
 
     @Transactional
@@ -75,7 +71,7 @@ public class CompanyService {
         validateLogo(file);
         try {
             company.storeLogo(publicLogoUrl(company), file.getContentType(), file.getBytes());
-            return CompanyResponse.from(company);
+            return toResponse(company);
         } catch (java.io.IOException ex) {
             throw new BadRequestException("Could not read logo file");
         }
@@ -97,6 +93,11 @@ public class CompanyService {
             throw new NotFoundException("Company not found");
         }
         return company;
+    }
+
+    @Transactional(readOnly = true)
+    public Company getCompany(UUID companyId) {
+        return companies.findById(companyId).orElseThrow(() -> new NotFoundException("Company not found"));
     }
 
     private void ensureSlugAvailable(String slug, UUID currentCompanyId) {
@@ -135,6 +136,10 @@ public class CompanyService {
     }
 
     private String publicLogoUrl(Company company) {
-        return properties.publicBaseUrl().replaceAll("/+$", "") + "/api/public/companies/" + company.getId() + "/logo";
+        return "/api/public/companies/" + company.getId() + "/logo";
+    }
+
+    private CompanyResponse toResponse(Company company) {
+        return CompanyResponse.from(company, qrCodes.countByCompany(company));
     }
 }

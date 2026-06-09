@@ -7,6 +7,7 @@ import no.benidorm.qr.publicapi.PublicDtos.SubmitFormRequest;
 import no.benidorm.qr.publicapi.PublicDtos.SubmitFormResponse;
 import no.benidorm.qr.publicapi.PublicDtos.TrackClickResponse;
 import no.benidorm.qr.qrcode.QrCodeService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,15 @@ public class PublicQrController {
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf("image/svg+xml"))
                 .body(qrCodeService.getOrCreatePublicSvg(slug));
+    }
+
+    @GetMapping(value = "/logo")
+    ResponseEntity<byte[]> logo(@PathVariable String slug) {
+        QrCodeService.LogoFile logo = qrCodeService.getPublicLogo(slug);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache())
+                .contentType(MediaType.parseMediaType(logo.contentType()))
+                .body(logo.bytes());
     }
 
     @PostMapping("/actions/{actionId}/click")

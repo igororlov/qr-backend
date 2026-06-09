@@ -1,6 +1,7 @@
 package no.benidorm.qr.auth;
 
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -9,6 +10,8 @@ import java.time.Instant;
 import java.util.Base64;
 import no.benidorm.qr.auth.AuthDtos.RegisterRequest;
 import no.benidorm.qr.common.BadRequestException;
+import no.benidorm.qr.company.Company;
+import no.benidorm.qr.company.CompanyRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,16 +22,19 @@ public class AuthService {
     private static final int TOKEN_BYTES = 32;
 
     private final AppUserRepository users;
+    private final CompanyRepository companies;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationMailService emailVerificationMailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
             AppUserRepository users,
+            CompanyRepository companies,
             PasswordEncoder passwordEncoder,
             EmailVerificationMailService emailVerificationMailService
     ) {
         this.users = users;
+        this.companies = companies;
         this.passwordEncoder = passwordEncoder;
         this.emailVerificationMailService = emailVerificationMailService;
     }
@@ -47,6 +53,7 @@ public class AuthService {
         );
         user.startEmailVerification(hashToken(token), Instant.now().plus(EMAIL_VERIFICATION_TTL));
         AppUser savedUser = users.save(user);
+        companies.save(new Company(request.companyName().trim(), uniqueCompanySlug(request.companyName()), null, savedUser));
         emailVerificationMailService.send(savedUser, token, EMAIL_VERIFICATION_TTL);
         return savedUser;
     }
@@ -75,5 +82,31 @@ public class AuthService {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 is not available", ex);
         }
+    }
+
+    private String uniqueCompanySlug(String name) {
+        String base = slugBase(name);
+        String candidate = base;
+        int suffix = 2;
+        while (companies.existsBySlug(candidate)) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private String slugBase(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
+        if (normalized.length() < 3) {
+            normalized = (normalized + "-company").replaceAll("(^-|-$)", "");
+        }
+        if (normalized.length() > 120) {
+            normalized = normalized.substring(0, 120).replaceAll("-+$", "");
+        }
+        return normalized.isBlank() ? "company" : normalized;
     }
 }

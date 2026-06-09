@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/companies/{companyId}/qr-codes")
@@ -64,6 +66,16 @@ public class QrCodeController {
             @Valid @RequestBody QrImageStyleRequest request
     ) {
         return qrCodeService.generateImage(CurrentUser.from(authentication), companyId, qrCodeId, request);
+    }
+
+    @PostMapping(value = "/{qrCodeId}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    QrCodeResponse uploadLogo(
+            Authentication authentication,
+            @PathVariable UUID companyId,
+            @PathVariable UUID qrCodeId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        return qrCodeService.uploadLogo(CurrentUser.from(authentication), companyId, qrCodeId, file);
     }
 
     @GetMapping(value = "/{qrCodeId}/png", produces = MediaType.IMAGE_PNG_VALUE)

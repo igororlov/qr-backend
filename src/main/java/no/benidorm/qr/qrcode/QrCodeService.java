@@ -1,6 +1,7 @@
 package no.benidorm.qr.qrcode;
 
 import jakarta.persistence.EntityManager;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -18,10 +19,13 @@ import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeResponse;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrImageStyleRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class QrCodeService {
     private static final Set<String> ALLOWED_FORM_TYPES = Set.of("contact", "feedback", "lead");
+    private static final long MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
+    private static final List<String> ALLOWED_LOGO_TYPES = List.of("image/png", "image/jpeg", "image/webp");
 
     private final QrCodeRepository qrCodes;
     private final CompanyService companyService;
@@ -107,6 +111,19 @@ public class QrCodeService {
     }
 
     @Transactional
+    public QrCodeResponse uploadLogo(AppUser user, UUID companyId, UUID qrCodeId, MultipartFile file) {
+        Company company = companyService.getOwnedCompany(user, companyId);
+        QrCode qrCode = getByCompany(company, qrCodeId);
+        validateLogo(file);
+        try {
+            qrCode.storeLogo(publicLogoUrl(qrCode), file.getContentType(), file.getBytes());
+            return QrCodeResponse.from(qrCode);
+        } catch (IOException ex) {
+            throw new BadRequestException("Could not read logo file");
+        }
+    }
+
+    @Transactional
     public byte[] getOrCreateImagePng(AppUser user, UUID companyId, UUID qrCodeId) {
         Company company = companyService.getOwnedCompany(user, companyId);
         QrCode qrCode = getByCompany(company, qrCodeId);
@@ -140,6 +157,15 @@ public class QrCodeService {
         QrCode qrCode = getPublicBySlug(slug);
         ensureGenerated(qrCode);
         return qrCode.getQrImageSvg().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Transactional(readOnly = true)
+    public LogoFile getPublicLogo(String slug) {
+        QrCode qrCode = getPublicBySlug(slug);
+        if (qrCode.getLogoBytes() == null || qrCode.getLogoContentType() == null) {
+            throw new NotFoundException("QR logo not found");
+        }
+        return new LogoFile(qrCode.getLogoContentType(), qrCode.getLogoBytes());
     }
 
     @Transactional(readOnly = true)
@@ -181,6 +207,18 @@ public class QrCodeService {
         }
     }
 
+    private void validateLogo(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Logo file is required");
+        }
+        if (file.getSize() > MAX_LOGO_SIZE_BYTES) {
+            throw new BadRequestException("Logo file is too large");
+        }
+        if (!ALLOWED_LOGO_TYPES.contains(file.getContentType())) {
+            throw new BadRequestException("Logo must be a PNG, JPEG, or WebP image");
+        }
+    }
+
     private String normalizeActionValue(QrActionRequest request) {
         String value = request.value().trim();
         if (request.type() == QrActionType.FORM) {
@@ -218,5 +256,12 @@ public class QrCodeService {
                 Boolean.TRUE.equals(request.imageStyle().backgroundTransparent()),
                 activeOrTrue(request.imageStyle().logoEnabled())
         );
+    }
+
+    private String publicLogoUrl(QrCode qrCode) {
+        return "/api/public/q/" + qrCode.getSlug() + "/logo";
+    }
+
+    public record LogoFile(String contentType, byte[] bytes) {
     }
 }

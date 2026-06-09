@@ -18,6 +18,7 @@ public final class AuthDtos {
     public record RegisterRequest(
             @Email @NotBlank String email,
             @NotBlank @Size(max = 160) String fullName,
+            @NotBlank @Size(max = 160) String companyName,
             @NotBlank @Size(min = 8, max = 200) String password
     ) {
     }

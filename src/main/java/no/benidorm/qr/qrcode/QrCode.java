@@ -42,6 +42,14 @@ public class QrCode extends AuditableEntity {
     @Column(columnDefinition = "text")
     private String logoUrl;
 
+    @Column
+    private String logoContentType;
+
+    @Column(name = "logo_bytes", columnDefinition = "bytea")
+    private byte[] logoBytes;
+
+    private Instant logoUploadedAt;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -119,6 +127,18 @@ public class QrCode extends AuditableEntity {
         return logoUrl;
     }
 
+    public String getLogoContentType() {
+        return logoContentType;
+    }
+
+    public byte[] getLogoBytes() {
+        return logoBytes;
+    }
+
+    public Instant getLogoUploadedAt() {
+        return logoUploadedAt;
+    }
+
     public boolean isActive() {
         return active;
     }
@@ -174,6 +194,16 @@ public class QrCode extends AuditableEntity {
         this.label = label;
         this.logoUrl = logoUrl;
         this.active = active;
+    }
+
+    public void storeLogo(String logoUrl, String contentType, byte[] bytes) {
+        this.logoUrl = logoUrl;
+        this.logoContentType = contentType;
+        this.logoBytes = bytes;
+        this.logoUploadedAt = Instant.now();
+        this.qrImagePng = null;
+        this.qrImageSvg = null;
+        this.qrImageGeneratedAt = null;
     }
 
     public void updateColors(String buttonColor, String textColor) {

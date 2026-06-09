@@ -31,6 +31,8 @@ import org.springframework.stereotype.Service;
 public class QrImageService {
     private static final int SIZE = 900;
     private static final int LABEL_HEIGHT = 120;
+    private static final int LABEL_FONT_SIZE = 52;
+    private static final int LABEL_BASELINE_Y = SIZE + 64;
     private static final int QUIET_ZONE = 4;
     private static final int LOGO_BOX_SIZE = 210;
     private static final Duration LOGO_READ_TIMEOUT = Duration.ofSeconds(5);
@@ -170,12 +172,11 @@ public class QrImageService {
             return;
         }
         graphics.setColor(foreground);
-        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 42));
+        graphics.setFont(new Font("Roboto", Font.BOLD, LABEL_FONT_SIZE));
         FontMetrics metrics = graphics.getFontMetrics();
         String text = label.length() > 36 ? label.substring(0, 36) : label;
         int x = Math.max(24, (SIZE - metrics.stringWidth(text)) / 2);
-        int y = SIZE + (LABEL_HEIGHT + metrics.getAscent()) / 2 - 12;
-        graphics.drawString(text, x, y);
+        graphics.drawString(text, x, LABEL_BASELINE_Y);
     }
 
     private void appendSvgLogo(StringBuilder svg, LogoAsset logo, String backgroundHex) {
@@ -206,14 +207,23 @@ public class QrImageService {
             return;
         }
         String text = label.length() > 36 ? label.substring(0, 36) : label;
-        svg.append("<text x=\"").append(SIZE / 2).append("\" y=\"").append(SIZE + 74)
-                .append("\" text-anchor=\"middle\" font-family=\"Arial, Helvetica, sans-serif\" font-size=\"42\" font-weight=\"700\" fill=\"")
+        svg.append("<text x=\"").append(SIZE / 2).append("\" y=\"").append(LABEL_BASELINE_Y)
+                .append("\" text-anchor=\"middle\" font-family=\"Roboto, Arial, Helvetica, sans-serif\" font-size=\"")
+                .append(LABEL_FONT_SIZE)
+                .append("\" font-weight=\"700\" fill=\"")
                 .append(escape(foregroundOrBackground(foregroundHex))).append("\">")
                 .append(escape(text))
                 .append("</text>");
     }
 
     private LogoAsset loadLogo(QrCode qrCode) {
+        if (qrCode.getLogoBytes() != null) {
+            return logoAsset(qrCode.getLogoBytes(), qrCode.getLogoContentType());
+        }
+        if (qrCode.getCompany().getLogoBytes() != null) {
+            return logoAsset(qrCode.getCompany().getLogoBytes(), qrCode.getCompany().getLogoContentType());
+        }
+
         String logoUrl = firstPresent(qrCode.getLogoUrl(), qrCode.getCompany().getLogoUrl());
         if (logoUrl == null) {
             return null;
@@ -237,6 +247,26 @@ public class QrImageService {
             String dataUri = "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(bytes);
             return new LogoAsset(image, dataUri);
         } catch (IllegalArgumentException | IOException ex) {
+            return null;
+        }
+    }
+
+    private LogoAsset logoAsset(byte[] bytes, String contentType) {
+        try {
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+            if (image == null) {
+                return null;
+            }
+            String normalizedContentType = contentType;
+            if (normalizedContentType == null || normalizedContentType.isBlank()) {
+                normalizedContentType = URLConnection.guessContentTypeFromStream(new ByteArrayInputStream(bytes));
+            }
+            if (normalizedContentType == null || normalizedContentType.isBlank()) {
+                normalizedContentType = "image/png";
+            }
+            String dataUri = "data:" + normalizedContentType + ";base64," + Base64.getEncoder().encodeToString(bytes);
+            return new LogoAsset(image, dataUri);
+        } catch (IOException ex) {
             return null;
         }
     }

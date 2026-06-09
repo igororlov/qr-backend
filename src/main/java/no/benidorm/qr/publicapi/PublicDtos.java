@@ -33,12 +33,12 @@ public final class PublicDtos {
                     qrCode.getId(),
                     qrCode.getCompany().getName(),
                     qrCode.getCompany().getSlug(),
-                    qrCode.getCompany().getLogoUrl(),
+                    resolveCompanyLogoUrl(qrCode),
                     qrCode.getSlug(),
                     qrCode.getTitle(),
                     qrCode.getSubtitle(),
                     qrCode.getLabel(),
-                    qrCode.getLogoUrl(),
+                    resolveLogoUrl(qrCode),
                     qrCode.getButtonColor(),
                     qrCode.getTextColor(),
                     qrCode.getActions().stream()
@@ -48,6 +48,20 @@ public final class PublicDtos {
                             .toList()
             );
         }
+    }
+
+    private static String resolveCompanyLogoUrl(QrCode qrCode) {
+        if (qrCode.getCompany().getLogoBytes() != null) {
+            return "/api/public/companies/" + qrCode.getCompany().getId() + "/logo";
+        }
+        return qrCode.getCompany().getLogoUrl();
+    }
+
+    private static String resolveLogoUrl(QrCode qrCode) {
+        if (qrCode.getLogoBytes() != null) {
+            return "/api/public/q/" + qrCode.getSlug() + "/logo";
+        }
+        return qrCode.getLogoUrl();
     }
 
     public record PublicActionResponse(

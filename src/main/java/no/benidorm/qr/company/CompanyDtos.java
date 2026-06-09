@@ -25,6 +25,7 @@ public final class CompanyDtos {
             String slug,
             String logoUrl,
             boolean active,
+            long qrCount,
             UUID ownerUserId,
             String ownerFullName,
             String ownerEmail,
@@ -36,8 +37,9 @@ public final class CompanyDtos {
                     company.getId(),
                     company.getName(),
                     company.getSlug(),
-                    company.getLogoUrl(),
+                    resolveLogoUrl(company),
                     company.isActive(),
+                    0,
                     company.getOwner().getId(),
                     company.getOwner().getFullName(),
                     company.getOwner().getEmail(),
@@ -45,5 +47,28 @@ public final class CompanyDtos {
                     company.getUpdatedAt()
             );
         }
+
+        public static CompanyResponse from(Company company, long qrCount) {
+            return new CompanyResponse(
+                    company.getId(),
+                    company.getName(),
+                    company.getSlug(),
+                    resolveLogoUrl(company),
+                    company.isActive(),
+                    qrCount,
+                    company.getOwner().getId(),
+                    company.getOwner().getFullName(),
+                    company.getOwner().getEmail(),
+                    company.getCreatedAt(),
+                    company.getUpdatedAt()
+            );
+        }
+    }
+
+    private static String resolveLogoUrl(Company company) {
+        if (company.getLogoBytes() != null) {
+            return "/api/public/companies/" + company.getId() + "/logo";
+        }
+        return company.getLogoUrl();
     }
 }

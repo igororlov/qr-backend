@@ -23,7 +23,7 @@ public class PublicCompanyController {
 
     @GetMapping(value = "/{companyId}/logo")
     ResponseEntity<byte[]> logo(@PathVariable UUID companyId) {
-        Company company = companyService.getActiveCompany(companyId);
+        Company company = companyService.getCompany(companyId);
         if (company.getLogoBytes() == null || company.getLogoContentType() == null) {
             throw new NotFoundException("Company logo not found");
         }

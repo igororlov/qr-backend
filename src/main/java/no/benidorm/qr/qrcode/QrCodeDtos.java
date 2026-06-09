@@ -65,7 +65,7 @@ public final class QrCodeDtos {
                     qrCode.getTitle(),
                     qrCode.getSubtitle(),
                     qrCode.getLabel(),
-                    qrCode.getLogoUrl(),
+                    resolveLogoUrl(qrCode),
                     qrCode.getButtonColor(),
                     qrCode.getTextColor(),
                     qrCode.isActive(),
@@ -79,6 +79,13 @@ public final class QrCodeDtos {
                     qrCode.getUpdatedAt()
             );
         }
+    }
+
+    private static String resolveLogoUrl(QrCode qrCode) {
+        if (qrCode.getLogoBytes() != null) {
+            return "/api/public/q/" + qrCode.getSlug() + "/logo";
+        }
+        return qrCode.getLogoUrl();
     }
 
     public record QrImageStyleRequest(
