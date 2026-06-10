@@ -93,6 +93,15 @@ public final class PublicDtos {
     public record SubmitFormResponse(UUID submissionId, String status) {
     }
 
+    public record TrackScanRequest(@Size(max = 100) String visitorId) {
+    }
+
+    public record TrackScanResponse(String status, boolean uniqueVisitor) {
+    }
+
+    public record TrackClickRequest(@Size(max = 100) String visitorId) {
+    }
+
     public record TrackClickResponse(String status) {
     }
 }

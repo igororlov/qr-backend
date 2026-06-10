@@ -1,11 +1,15 @@
 package no.benidorm.qr.publicapi;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import no.benidorm.qr.publicapi.PublicDtos.PublicQrResponse;
 import no.benidorm.qr.publicapi.PublicDtos.SubmitFormRequest;
 import no.benidorm.qr.publicapi.PublicDtos.SubmitFormResponse;
+import no.benidorm.qr.publicapi.PublicDtos.TrackClickRequest;
 import no.benidorm.qr.publicapi.PublicDtos.TrackClickResponse;
+import no.benidorm.qr.publicapi.PublicDtos.TrackScanRequest;
+import no.benidorm.qr.publicapi.PublicDtos.TrackScanResponse;
 import no.benidorm.qr.qrcode.QrCodeService;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -56,9 +60,23 @@ public class PublicQrController {
                 .body(logo.bytes());
     }
 
+    @PostMapping("/scan")
+    TrackScanResponse trackScan(
+            @PathVariable String slug,
+            @Valid @RequestBody(required = false) TrackScanRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        return publicQrService.trackScan(slug, request, servletRequest);
+    }
+
     @PostMapping("/actions/{actionId}/click")
-    TrackClickResponse trackClick(@PathVariable String slug, @PathVariable UUID actionId) {
-        return publicQrService.trackClick(slug, actionId);
+    TrackClickResponse trackClick(
+            @PathVariable String slug,
+            @PathVariable UUID actionId,
+            @Valid @RequestBody(required = false) TrackClickRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        return publicQrService.trackClick(slug, actionId, request, servletRequest);
     }
 
     @PostMapping("/submit-form")

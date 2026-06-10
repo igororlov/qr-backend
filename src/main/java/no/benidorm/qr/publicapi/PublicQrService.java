@@ -1,19 +1,27 @@
 package no.benidorm.qr.publicapi;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import no.benidorm.qr.common.BadRequestException;
 import no.benidorm.qr.common.NotFoundException;
 import no.benidorm.qr.publicapi.PublicDtos.PublicQrResponse;
 import no.benidorm.qr.publicapi.PublicDtos.SubmitFormRequest;
 import no.benidorm.qr.publicapi.PublicDtos.SubmitFormResponse;
+import no.benidorm.qr.publicapi.PublicDtos.TrackClickRequest;
 import no.benidorm.qr.publicapi.PublicDtos.TrackClickResponse;
+import no.benidorm.qr.publicapi.PublicDtos.TrackScanRequest;
+import no.benidorm.qr.publicapi.PublicDtos.TrackScanResponse;
 import no.benidorm.qr.qrcode.QrAction;
+import no.benidorm.qr.qrcode.QrActionClickEvent;
+import no.benidorm.qr.qrcode.QrActionClickEventRepository;
 import no.benidorm.qr.qrcode.QrActionRepository;
 import no.benidorm.qr.qrcode.QrActionType;
 import no.benidorm.qr.qrcode.QrCode;
 import no.benidorm.qr.qrcode.QrCodeRepository;
 import no.benidorm.qr.qrcode.QrFormSubmission;
 import no.benidorm.qr.qrcode.QrFormSubmissionRepository;
+import no.benidorm.qr.qrcode.QrScanEvent;
+import no.benidorm.qr.qrcode.QrScanEventRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,29 +30,50 @@ public class PublicQrService {
     private final QrCodeRepository qrCodes;
     private final QrActionRepository actions;
     private final QrFormSubmissionRepository submissions;
+    private final QrScanEventRepository scanEvents;
+    private final QrActionClickEventRepository clickEvents;
     private final SubmissionMailService submissionMailService;
 
     public PublicQrService(
             QrCodeRepository qrCodes,
             QrActionRepository actions,
             QrFormSubmissionRepository submissions,
+            QrScanEventRepository scanEvents,
+            QrActionClickEventRepository clickEvents,
             SubmissionMailService submissionMailService
     ) {
         this.qrCodes = qrCodes;
         this.actions = actions;
         this.submissions = submissions;
+        this.scanEvents = scanEvents;
+        this.clickEvents = clickEvents;
         this.submissionMailService = submissionMailService;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public PublicQrResponse get(String slug) {
         QrCode qrCode = getActiveQr(slug);
-        qrCode.incrementScanCount();
         return PublicQrResponse.from(qrCode);
     }
 
     @Transactional
-    public TrackClickResponse trackClick(String slug, UUID actionId) {
+    public TrackScanResponse trackScan(String slug, TrackScanRequest request, HttpServletRequest servletRequest) {
+        QrCode qrCode = getActiveQr(slug);
+        String visitorId = normalizeVisitorId(request == null ? null : request.visitorId());
+        boolean uniqueVisitor = visitorId != null && !scanEvents.existsByQrCodeAndVisitorId(qrCode, visitorId);
+        qrCode.incrementScanCount();
+        scanEvents.save(new QrScanEvent(
+                qrCode,
+                visitorId,
+                uniqueVisitor,
+                resolveIpAddress(servletRequest),
+                truncate(servletRequest.getHeader("User-Agent"), 4000)
+        ));
+        return new TrackScanResponse("ok", uniqueVisitor);
+    }
+
+    @Transactional
+    public TrackClickResponse trackClick(String slug, UUID actionId, TrackClickRequest request, HttpServletRequest servletRequest) {
         QrCode qrCode = getActiveQr(slug);
         QrAction action = actions.findByIdAndQrCode(actionId, qrCode)
                 .orElseThrow(() -> new NotFoundException("Action not found"));
@@ -52,6 +81,13 @@ public class PublicQrService {
             throw new NotFoundException("Action not found");
         }
         action.incrementClickCount();
+        clickEvents.save(new QrActionClickEvent(
+                qrCode,
+                action,
+                normalizeVisitorId(request == null ? null : request.visitorId()),
+                resolveIpAddress(servletRequest),
+                truncate(servletRequest.getHeader("User-Agent"), 4000)
+        ));
         return new TrackClickResponse("ok");
     }
 
@@ -79,5 +115,31 @@ public class PublicQrService {
                 .filter(qrCode -> qrCode.getCompany().isActive())
                 .orElseThrow(() -> new NotFoundException("QR code not found"));
     }
-}
 
+    private static String normalizeVisitorId(String visitorId) {
+        String trimmed = visitorId == null ? "" : visitorId.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return truncate(trimmed, 100);
+    }
+
+    private static String resolveIpAddress(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return truncate(forwardedFor.split(",")[0].trim(), 45);
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return truncate(realIp.trim(), 45);
+        }
+        return truncate(request.getRemoteAddr(), 45);
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+}
