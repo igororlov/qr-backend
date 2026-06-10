@@ -44,3 +44,5 @@ app:
     expiration: PT8H
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
+  geo-ip:
+    city-db-path: ${APP_GEOIP_CITY_DB_PATH:}

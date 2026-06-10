@@ -18,6 +18,7 @@ import no.benidorm.qr.qrcode.QrActionRepository;
 import no.benidorm.qr.qrcode.QrActionType;
 import no.benidorm.qr.qrcode.QrCode;
 import no.benidorm.qr.qrcode.QrCodeRepository;
+import no.benidorm.qr.qrcode.GeoIpService;
 import no.benidorm.qr.qrcode.QrFormSubmission;
 import no.benidorm.qr.qrcode.QrFormSubmissionRepository;
 import no.benidorm.qr.qrcode.QrScanEvent;
@@ -32,6 +33,7 @@ public class PublicQrService {
     private final QrFormSubmissionRepository submissions;
     private final QrScanEventRepository scanEvents;
     private final QrActionClickEventRepository clickEvents;
+    private final GeoIpService geoIpService;
     private final SubmissionMailService submissionMailService;
 
     public PublicQrService(
@@ -40,6 +42,7 @@ public class PublicQrService {
             QrFormSubmissionRepository submissions,
             QrScanEventRepository scanEvents,
             QrActionClickEventRepository clickEvents,
+            GeoIpService geoIpService,
             SubmissionMailService submissionMailService
     ) {
         this.qrCodes = qrCodes;
@@ -47,6 +50,7 @@ public class PublicQrService {
         this.submissions = submissions;
         this.scanEvents = scanEvents;
         this.clickEvents = clickEvents;
+        this.geoIpService = geoIpService;
         this.submissionMailService = submissionMailService;
     }
 
@@ -61,13 +65,16 @@ public class PublicQrService {
         QrCode qrCode = getActiveQr(slug);
         String visitorId = normalizeVisitorId(request == null ? null : request.visitorId());
         boolean uniqueVisitor = visitorId != null && !scanEvents.existsByQrCodeAndVisitorId(qrCode, visitorId);
+        String ipAddress = resolveIpAddress(servletRequest);
+        String userAgent = truncate(servletRequest.getHeader("User-Agent"), 4000);
         qrCode.incrementScanCount();
         scanEvents.save(new QrScanEvent(
                 qrCode,
                 visitorId,
                 uniqueVisitor,
-                resolveIpAddress(servletRequest),
-                truncate(servletRequest.getHeader("User-Agent"), 4000)
+                ipAddress,
+                userAgent,
+                geoIpService.lookup(ipAddress)
         ));
         return new TrackScanResponse("ok", uniqueVisitor);
     }
@@ -80,13 +87,16 @@ public class PublicQrService {
         if (!action.isActive()) {
             throw new NotFoundException("Action not found");
         }
+        String ipAddress = resolveIpAddress(servletRequest);
+        String userAgent = truncate(servletRequest.getHeader("User-Agent"), 4000);
         action.incrementClickCount();
         clickEvents.save(new QrActionClickEvent(
                 qrCode,
                 action,
                 normalizeVisitorId(request == null ? null : request.visitorId()),
-                resolveIpAddress(servletRequest),
-                truncate(servletRequest.getHeader("User-Agent"), 4000)
+                ipAddress,
+                userAgent,
+                geoIpService.lookup(ipAddress)
         ));
         return new TrackClickResponse("ok");
     }

@@ -12,11 +12,15 @@ public record AppProperties(
         String adminEmail,
         String adminPassword,
         Jwt jwt,
-        Cors cors
+        Cors cors,
+        GeoIp geoIp
 ) {
     public record Jwt(String secret, Duration expiration) {
     }
 
     public record Cors(List<String> allowedOrigins) {
+    }
+
+    public record GeoIp(String cityDbPath) {
     }
 }
