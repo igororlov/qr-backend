@@ -52,7 +52,27 @@ public class QrScanEvent {
         return id;
     }
 
+    public QrCode getQrCode() {
+        return qrCode;
+    }
+
+    public String getVisitorId() {
+        return visitorId;
+    }
+
     public boolean isUniqueVisitor() {
         return uniqueVisitor;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public Instant getScannedAt() {
+        return scannedAt;
     }
 }

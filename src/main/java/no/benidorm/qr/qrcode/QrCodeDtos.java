@@ -137,4 +137,62 @@ public final class QrCodeDtos {
             );
         }
     }
+
+    public record QrAnalyticsResponse(
+            QrAnalyticsSummary scans,
+            QrAnalyticsSummary actions,
+            List<QrAnalyticsEventResponse> events
+    ) {
+    }
+
+    public record QrAnalyticsSummary(
+            long lastDay,
+            long lastWeek,
+            long lastMonth
+    ) {
+    }
+
+    public record QrAnalyticsEventResponse(
+            UUID id,
+            String type,
+            Instant occurredAt,
+            String visitorId,
+            String ipAddress,
+            String userAgent,
+            Boolean uniqueVisitor,
+            UUID actionId,
+            String actionLabel,
+            QrActionType actionType
+    ) {
+        public static QrAnalyticsEventResponse scan(QrScanEvent event) {
+            return new QrAnalyticsEventResponse(
+                    event.getId(),
+                    "SCAN",
+                    event.getScannedAt(),
+                    event.getVisitorId(),
+                    event.getIpAddress(),
+                    event.getUserAgent(),
+                    event.isUniqueVisitor(),
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        public static QrAnalyticsEventResponse click(QrActionClickEvent event) {
+            QrAction action = event.getAction();
+            return new QrAnalyticsEventResponse(
+                    event.getId(),
+                    "ACTION_CLICK",
+                    event.getClickedAt(),
+                    event.getVisitorId(),
+                    event.getIpAddress(),
+                    event.getUserAgent(),
+                    null,
+                    action.getId(),
+                    action.getLabel(),
+                    action.getType()
+            );
+        }
+    }
 }

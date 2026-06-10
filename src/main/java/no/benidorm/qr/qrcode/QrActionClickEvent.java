@@ -48,4 +48,32 @@ public class QrActionClickEvent {
         this.userAgent = userAgent;
         this.clickedAt = Instant.now();
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public QrCode getQrCode() {
+        return qrCode;
+    }
+
+    public QrAction getAction() {
+        return action;
+    }
+
+    public String getVisitorId() {
+        return visitorId;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public Instant getClickedAt() {
+        return clickedAt;
+    }
 }

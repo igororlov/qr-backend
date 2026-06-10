@@ -2,6 +2,9 @@ package no.benidorm.qr.qrcode;
 
 import jakarta.persistence.EntityManager;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +17,9 @@ import no.benidorm.qr.company.Company;
 import no.benidorm.qr.company.CompanyService;
 import no.benidorm.qr.config.AppProperties;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrActionRequest;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrAnalyticsEventResponse;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrAnalyticsResponse;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrAnalyticsSummary;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeRequest;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeResponse;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrImageStyleRequest;
@@ -28,6 +34,8 @@ public class QrCodeService {
     private static final List<String> ALLOWED_LOGO_TYPES = List.of("image/png", "image/jpeg", "image/webp");
 
     private final QrCodeRepository qrCodes;
+    private final QrScanEventRepository scanEvents;
+    private final QrActionClickEventRepository clickEvents;
     private final CompanyService companyService;
     private final AppProperties properties;
     private final QrImageService qrImageService;
@@ -35,12 +43,16 @@ public class QrCodeService {
 
     public QrCodeService(
             QrCodeRepository qrCodes,
+            QrScanEventRepository scanEvents,
+            QrActionClickEventRepository clickEvents,
             CompanyService companyService,
             AppProperties properties,
             QrImageService qrImageService,
             EntityManager entityManager
     ) {
         this.qrCodes = qrCodes;
+        this.scanEvents = scanEvents;
+        this.clickEvents = clickEvents;
         this.companyService = companyService;
         this.properties = properties;
         this.qrImageService = qrImageService;
@@ -60,6 +72,44 @@ public class QrCodeService {
         Company company = companyService.getOwnedCompany(user, companyId);
         QrCode qrCode = getByCompany(company, qrCodeId);
         return QrCodeResponse.from(qrCode);
+    }
+
+    @Transactional(readOnly = true)
+    public QrAnalyticsResponse analytics(AppUser user, UUID companyId, UUID qrCodeId, String type, String visitorId, String sort) {
+        Company company = companyService.getOwnedCompany(user, companyId);
+        QrCode qrCode = getByCompany(company, qrCodeId);
+        String normalizedType = normalizeAnalyticsType(type);
+        String normalizedVisitorId = normalizeFilter(visitorId);
+        boolean ascending = "asc".equalsIgnoreCase(sort);
+
+        QrAnalyticsSummary scanSummary = scanSummary(qrCode);
+        QrAnalyticsSummary clickSummary = clickSummary(qrCode);
+        List<QrAnalyticsEventResponse> events = new ArrayList<>();
+
+        if (!"click".equals(normalizedType)) {
+            List<QrScanEvent> scans = normalizedVisitorId == null
+                    ? scanEvents.findByQrCode(qrCode)
+                    : scanEvents.findByQrCodeAndVisitorId(qrCode, normalizedVisitorId);
+            events.addAll(scans.stream().map(QrAnalyticsEventResponse::scan).toList());
+        }
+
+        if (!"scan".equals(normalizedType)) {
+            List<QrActionClickEvent> clicks = normalizedVisitorId == null
+                    ? clickEvents.findByQrCode(qrCode)
+                    : clickEvents.findByQrCodeAndVisitorId(qrCode, normalizedVisitorId);
+            events.addAll(clicks.stream().map(QrAnalyticsEventResponse::click).toList());
+        }
+
+        Comparator<QrAnalyticsEventResponse> comparator = Comparator.comparing(QrAnalyticsEventResponse::occurredAt);
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+
+        return new QrAnalyticsResponse(
+                scanSummary,
+                clickSummary,
+                events.stream().sorted(comparator).toList()
+        );
     }
 
     @Transactional
@@ -237,6 +287,41 @@ public class QrCodeService {
 
     private boolean activeOrTrue(Boolean active) {
         return active == null || active;
+    }
+
+    private QrAnalyticsSummary scanSummary(QrCode qrCode) {
+        Instant now = Instant.now();
+        return new QrAnalyticsSummary(
+                scanEvents.countByQrCodeAndScannedAtAfter(qrCode, now.minus(1, ChronoUnit.DAYS)),
+                scanEvents.countByQrCodeAndScannedAtAfter(qrCode, now.minus(7, ChronoUnit.DAYS)),
+                scanEvents.countByQrCodeAndScannedAtAfter(qrCode, now.minus(30, ChronoUnit.DAYS))
+        );
+    }
+
+    private QrAnalyticsSummary clickSummary(QrCode qrCode) {
+        Instant now = Instant.now();
+        return new QrAnalyticsSummary(
+                clickEvents.countByQrCodeAndClickedAtAfter(qrCode, now.minus(1, ChronoUnit.DAYS)),
+                clickEvents.countByQrCodeAndClickedAtAfter(qrCode, now.minus(7, ChronoUnit.DAYS)),
+                clickEvents.countByQrCodeAndClickedAtAfter(qrCode, now.minus(30, ChronoUnit.DAYS))
+        );
+    }
+
+    private String normalizeAnalyticsType(String type) {
+        if (type == null || type.isBlank() || "all".equalsIgnoreCase(type)) {
+            return "all";
+        }
+        if ("scan".equalsIgnoreCase(type) || "click".equalsIgnoreCase(type)) {
+            return type.toLowerCase();
+        }
+        throw new BadRequestException("Analytics type must be all, scan, or click");
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private void ensureGenerated(QrCode qrCode) {

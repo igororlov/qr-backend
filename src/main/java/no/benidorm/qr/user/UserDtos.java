@@ -23,12 +23,20 @@ public final class UserDtos {
     ) {
     }
 
+    public record UserUpdateRequest(
+            @Email @NotBlank String email,
+            @NotBlank @Size(max = 160) String fullName,
+            boolean emailVerified
+    ) {
+    }
+
     public record UserResponse(
             UUID id,
             String email,
             String fullName,
             UserRole role,
             boolean enabled,
+            boolean emailVerified,
             List<UserCompanyResponse> companies,
             Instant createdAt,
             Instant updatedAt
@@ -44,6 +52,7 @@ public final class UserDtos {
                     user.getFullName(),
                     user.getRole(),
                     user.isEnabled(),
+                    user.getEmailVerifiedAt() != null,
                     companies.stream().map(UserCompanyResponse::from).toList(),
                     user.getCreatedAt(),
                     user.getUpdatedAt()

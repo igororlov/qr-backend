@@ -3,6 +3,7 @@ package no.benidorm.qr.qrcode;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import no.benidorm.qr.qrcode.QrCodeDtos.QrAnalyticsResponse;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeRequest;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrCodeResponse;
 import no.benidorm.qr.qrcode.QrCodeDtos.QrImageStyleRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +39,18 @@ public class QrCodeController {
     @GetMapping("/{qrCodeId}")
     QrCodeResponse get(Authentication authentication, @PathVariable UUID companyId, @PathVariable UUID qrCodeId) {
         return qrCodeService.get(CurrentUser.from(authentication), companyId, qrCodeId);
+    }
+
+    @GetMapping("/{qrCodeId}/analytics")
+    QrAnalyticsResponse analytics(
+            Authentication authentication,
+            @PathVariable UUID companyId,
+            @PathVariable UUID qrCodeId,
+            @RequestParam(defaultValue = "all") String type,
+            @RequestParam(required = false) String visitorId,
+            @RequestParam(defaultValue = "desc") String sort
+    ) {
+        return qrCodeService.analytics(CurrentUser.from(authentication), companyId, qrCodeId, type, visitorId, sort);
     }
 
     @PostMapping

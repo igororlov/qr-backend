@@ -9,6 +9,7 @@ import no.benidorm.qr.common.NotFoundException;
 import no.benidorm.qr.company.CompanyRepository;
 import no.benidorm.qr.user.UserDtos.UserCreateRequest;
 import no.benidorm.qr.user.UserDtos.UserResponse;
+import no.benidorm.qr.user.UserDtos.UserUpdateRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,19 @@ public class UserService {
                 request.role()
         ));
         return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse update(UUID userId, UserUpdateRequest request) {
+        AppUser user = users.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        users.findByEmailIgnoreCase(request.email())
+                .filter(existing -> !existing.getId().equals(user.getId()))
+                .ifPresent(existing -> {
+                    throw new BadRequestException("User email is already used");
+                });
+        user.updateProfile(request.email().trim(), request.fullName().trim());
+        user.setEmailVerified(request.emailVerified());
+        return UserResponse.from(user, companies.findByOwnerOrderByCreatedAtDesc(user));
     }
 
     @Transactional

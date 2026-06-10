@@ -76,8 +76,24 @@ public class AppUser extends AuditableEntity {
         return enabled;
     }
 
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
     public Instant getEmailVerificationExpiresAt() {
         return emailVerificationExpiresAt;
+    }
+
+    public void updateProfile(String email, String fullName) {
+        this.email = email.toLowerCase();
+        this.fullName = fullName;
+    }
+
+    public void setEmailVerified(boolean verified) {
+        this.enabled = verified;
+        this.emailVerifiedAt = verified ? Instant.now() : null;
+        this.emailVerificationTokenHash = null;
+        this.emailVerificationExpiresAt = null;
     }
 
     public void startEmailVerification(String tokenHash, Instant expiresAt) {
