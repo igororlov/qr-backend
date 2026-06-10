@@ -8,6 +8,8 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
+import java.util.Locale;
 import no.benidorm.qr.auth.AuthDtos.RegisterRequest;
 import no.benidorm.qr.common.BadRequestException;
 import no.benidorm.qr.company.Company;
@@ -20,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private static final Duration EMAIL_VERIFICATION_TTL = Duration.ofHours(24);
     private static final int TOKEN_BYTES = 32;
+    private static final List<String> COMPANY_LEGAL_SUFFIXES = List.of(
+            "AS", "ASA", "NUF", "ENK", "DA", "ANS", "SA", "BA", "KF", "IKS", "FKF", "KS", "BBL", "SF", "HF", "RHF"
+    );
 
     private final AppUserRepository users;
     private final CompanyRepository companies;
@@ -53,7 +58,8 @@ public class AuthService {
         );
         user.startEmailVerification(hashToken(token), Instant.now().plus(EMAIL_VERIFICATION_TTL));
         AppUser savedUser = users.save(user);
-        Company company = new Company(request.companyName().trim(), uniqueCompanySlug(request.companyName()), null, savedUser);
+        String companyName = normalizeCompanyName(request.companyName());
+        Company company = new Company(companyName, uniqueCompanySlug(companyName), null, savedUser);
         company.updateRegistryDetails(
                 emptyToNull(request.organizationNumber()),
                 emptyToNull(request.addressLine()),
@@ -115,6 +121,36 @@ public class AuthService {
             normalized = normalized.substring(0, 120).replaceAll("-+$", "");
         }
         return normalized.isBlank() ? "company" : normalized;
+    }
+
+    private String normalizeCompanyName(String value) {
+        String[] words = value.trim().replaceAll("\\s+", " ").split(" ");
+        for (int i = 0; i < words.length; i++) {
+            words[i] = normalizeCompanyNameToken(words[i]);
+        }
+        return String.join(" ", words);
+    }
+
+    private String normalizeCompanyNameToken(String token) {
+        String[] parts = token.split("-", -1);
+        for (int i = 0; i < parts.length; i++) {
+            parts[i] = normalizeCompanyNameWord(parts[i]);
+        }
+        return String.join("-", parts);
+    }
+
+    private String normalizeCompanyNameWord(String word) {
+        if (word.isBlank()) {
+            return word;
+        }
+        String upper = word.toUpperCase(Locale.ROOT);
+        if (COMPANY_LEGAL_SUFFIXES.contains(upper) || Character.isDigit(word.codePointAt(0))) {
+            return upper;
+        }
+        String lower = word.toLowerCase(Locale.forLanguageTag("nb-NO"));
+        int firstCodePoint = lower.codePointAt(0);
+        int firstLength = Character.charCount(firstCodePoint);
+        return new String(Character.toChars(Character.toTitleCase(firstCodePoint))) + lower.substring(firstLength);
     }
 
     private String emptyToNull(String value) {
