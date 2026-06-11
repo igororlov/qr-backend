@@ -125,6 +125,7 @@ public class QrCodeService {
                 request.logoUrl()
         );
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        qrCode.updateImageLabels(request.labelTop(), request.labelLeft(), request.labelRight());
         qrCode.updateColors(request.buttonColor().toLowerCase(), request.textColor().toLowerCase());
         applyImageStyle(qrCode, request);
         qrCode.replaceActions(toActions(request.actions()));
@@ -137,6 +138,7 @@ public class QrCodeService {
         QrCode qrCode = getByCompany(company, qrCodeId);
         ensureSlugAvailable(request.slug(), qrCodeId);
         qrCode.update(request.slug(), request.title(), request.subtitle(), request.label(), request.logoUrl(), activeOrTrue(request.active()));
+        qrCode.updateImageLabels(request.labelTop(), request.labelLeft(), request.labelRight());
         qrCode.updateColors(request.buttonColor().toLowerCase(), request.textColor().toLowerCase());
         applyImageStyle(qrCode, request);
         qrCode.clearActions();

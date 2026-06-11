@@ -39,6 +39,15 @@ public class QrCode extends AuditableEntity {
     @Column(length = 120)
     private String label;
 
+    @Column(length = 120)
+    private String labelTop;
+
+    @Column(length = 120)
+    private String labelLeft;
+
+    @Column(length = 120)
+    private String labelRight;
+
     @Column(columnDefinition = "text")
     private String logoUrl;
 
@@ -123,6 +132,18 @@ public class QrCode extends AuditableEntity {
         return label;
     }
 
+    public String getLabelTop() {
+        return labelTop;
+    }
+
+    public String getLabelLeft() {
+        return labelLeft;
+    }
+
+    public String getLabelRight() {
+        return labelRight;
+    }
+
     public String getLogoUrl() {
         return logoUrl;
     }
@@ -194,6 +215,15 @@ public class QrCode extends AuditableEntity {
         this.label = label;
         this.logoUrl = logoUrl;
         this.active = active;
+    }
+
+    public void updateImageLabels(String labelTop, String labelLeft, String labelRight) {
+        this.labelTop = labelTop;
+        this.labelLeft = labelLeft;
+        this.labelRight = labelRight;
+        this.qrImagePng = null;
+        this.qrImageSvg = null;
+        this.qrImageGeneratedAt = null;
     }
 
     public void storeLogo(String logoUrl, String contentType, byte[] bytes) {

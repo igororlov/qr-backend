@@ -30,9 +30,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class QrImageService {
     private static final int SIZE = 900;
-    private static final int LABEL_HEIGHT = 120;
-    private static final int LABEL_FONT_SIZE = 52;
-    private static final int LABEL_BASELINE_Y = SIZE + 64;
+    private static final int LABEL_HEIGHT = 86;
+    private static final int SIDE_LABEL_WIDTH = 86;
+    private static final int LABEL_FONT_SIZE = 74;
+    private static final int LABEL_GAP = 2;
     private static final int QUIET_ZONE = 4;
     private static final int LOGO_BOX_SIZE = 210;
     private static final Duration LOGO_READ_TIMEOUT = Duration.ofSeconds(5);
@@ -41,7 +42,7 @@ public class QrImageService {
         LogoAsset logo = qrCode.isQrLogoEnabled() ? loadLogo(qrCode) : null;
         return generate(
                 url,
-                qrCode.getLabel(),
+                new QrImageLabels(qrCode.getLabelTop(), qrCode.getLabelLeft(), qrCode.getLabelRight(), qrCode.getLabel()),
                 qrCode.getQrForegroundColor(),
                 qrCode.getQrBackgroundColor(),
                 qrCode.isQrBackgroundTransparent(),
@@ -50,12 +51,12 @@ public class QrImageService {
     }
 
     public GeneratedQrImage generate(String url, String label) {
-        return generate(url, label, "#111111", "#ffffff", false, null);
+        return generate(url, new QrImageLabels(null, null, null, label), "#111111", "#ffffff", false, null);
     }
 
     private GeneratedQrImage generate(
             String url,
-            String label,
+            QrImageLabels labels,
             String foregroundHex,
             String backgroundHex,
             boolean backgroundTransparent,
@@ -69,9 +70,16 @@ public class QrImageService {
             ));
             Color foreground = Color.decode(foregroundHex);
             Color background = Color.decode(backgroundHex);
+            int topHeight = hasText(labels.top()) ? LABEL_HEIGHT : 0;
+            int leftWidth = hasText(labels.left()) ? SIDE_LABEL_WIDTH : 0;
+            int rightWidth = hasText(labels.right()) ? SIDE_LABEL_WIDTH : 0;
+            int width = leftWidth + SIZE + rightWidth;
+            int height = topHeight + SIZE + LABEL_HEIGHT;
+            int qrX = leftWidth;
+            int qrY = topHeight;
             BufferedImage image = new BufferedImage(
-                    SIZE,
-                    SIZE + LABEL_HEIGHT,
+                    width,
+                    height,
                     backgroundTransparent ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB
             );
             Graphics2D graphics = image.createGraphics();
@@ -80,16 +88,16 @@ public class QrImageService {
                 graphics.setColor(background);
                 graphics.fillRect(0, 0, image.getWidth(), image.getHeight());
             }
-            drawMatrix(graphics, matrix, foreground);
-            drawLogo(graphics, logo == null ? null : logo.image(), background);
-            drawLabel(graphics, label, foreground);
+            drawMatrix(graphics, matrix, foreground, qrX, qrY);
+            drawLogo(graphics, logo == null ? null : logo.image(), background, qrX, qrY);
+            drawLabels(graphics, labels, foreground, width, topHeight, leftWidth, qrX, qrY);
             graphics.dispose();
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ImageIO.write(image, "png", out);
             return new GeneratedQrImage(
                     out.toByteArray(),
-                    svg(matrix, label, foregroundHex, backgroundHex, backgroundTransparent, logo)
+                    svg(matrix, labels, foregroundHex, backgroundHex, backgroundTransparent, logo)
             );
         } catch (IllegalArgumentException | WriterException | IOException ex) {
             throw new BadRequestException("Could not generate QR image");
@@ -98,21 +106,28 @@ public class QrImageService {
 
     private String svg(
             BitMatrix matrix,
-            String label,
+            QrImageLabels labels,
             String foregroundHex,
             String backgroundHex,
             boolean backgroundTransparent,
             LogoAsset logo
     ) {
+        int topHeight = hasText(labels.top()) ? LABEL_HEIGHT : 0;
+        int leftWidth = hasText(labels.left()) ? SIDE_LABEL_WIDTH : 0;
+        int rightWidth = hasText(labels.right()) ? SIDE_LABEL_WIDTH : 0;
+        int width = leftWidth + SIZE + rightWidth;
+        int height = topHeight + SIZE + LABEL_HEIGHT;
+        int qrX = leftWidth;
+        int qrY = topHeight;
         StringBuilder svg = new StringBuilder();
         svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ")
-                .append(SIZE)
+                .append(width)
                 .append(' ')
-                .append(SIZE + LABEL_HEIGHT)
+                .append(height)
                 .append("\" width=\"")
-                .append(SIZE)
+                .append(width)
                 .append("\" height=\"")
-                .append(SIZE + LABEL_HEIGHT)
+                .append(height)
                 .append("\" fill=\"none\">");
         if (!backgroundTransparent) {
             svg.append("<rect width=\"100%\" height=\"100%\" fill=\"").append(escape(foregroundOrBackground(backgroundHex))).append("\"/>");
@@ -121,35 +136,35 @@ public class QrImageService {
         for (int y = 0; y < matrix.getHeight(); y++) {
             for (int x = 0; x < matrix.getWidth(); x++) {
                 if (matrix.get(x, y)) {
-                    svg.append("<rect x=\"").append(x).append("\" y=\"").append(y).append("\" width=\"1\" height=\"1\"/>");
+                    svg.append("<rect x=\"").append(x + qrX).append("\" y=\"").append(y + qrY).append("\" width=\"1\" height=\"1\"/>");
                 }
             }
         }
         svg.append("</g>");
-        appendSvgLogo(svg, logo, backgroundHex);
-        appendSvgLabel(svg, label, foregroundHex);
+        appendSvgLogo(svg, logo, backgroundHex, qrX, qrY);
+        appendSvgLabels(svg, labels, foregroundHex, width, topHeight, leftWidth, qrX, qrY);
         svg.append("</svg>");
         return svg.toString();
     }
 
-    private void drawMatrix(Graphics2D graphics, BitMatrix matrix, Color foreground) {
+    private void drawMatrix(Graphics2D graphics, BitMatrix matrix, Color foreground, int qrX, int qrY) {
         graphics.setColor(foreground);
         for (int y = 0; y < matrix.getHeight(); y++) {
             for (int x = 0; x < matrix.getWidth(); x++) {
                 if (matrix.get(x, y)) {
-                    graphics.fillRect(x, y, 1, 1);
+                    graphics.fillRect(x + qrX, y + qrY, 1, 1);
                 }
             }
         }
     }
 
-    private void drawLogo(Graphics2D graphics, BufferedImage logo, Color background) {
+    private void drawLogo(Graphics2D graphics, BufferedImage logo, Color background, int qrX, int qrY) {
         if (logo == null) {
             return;
         }
 
-        int boxX = (SIZE - LOGO_BOX_SIZE) / 2;
-        int boxY = (SIZE - LOGO_BOX_SIZE) / 2;
+        int boxX = qrX + (SIZE - LOGO_BOX_SIZE) / 2;
+        int boxY = qrY + (SIZE - LOGO_BOX_SIZE) / 2;
         int arc = 36;
         RoundRectangle2D.Float box = new RoundRectangle2D.Float(boxX, boxY, LOGO_BOX_SIZE, LOGO_BOX_SIZE, arc, arc);
         graphics.setColor(background);
@@ -167,24 +182,52 @@ public class QrImageService {
         graphics.drawImage(logo, x, y, width, height, null);
     }
 
-    private void drawLabel(Graphics2D graphics, String label, Color foreground) {
-        if (label == null || label.isBlank()) {
-            return;
-        }
+    private void drawLabels(Graphics2D graphics, QrImageLabels labels, Color foreground, int width, int topHeight, int leftWidth, int qrX, int qrY) {
         graphics.setColor(foreground);
         graphics.setFont(new Font("Roboto", Font.BOLD, LABEL_FONT_SIZE));
         FontMetrics metrics = graphics.getFontMetrics();
-        String text = label.length() > 36 ? label.substring(0, 36) : label;
-        int x = Math.max(24, (SIZE - metrics.stringWidth(text)) / 2);
-        graphics.drawString(text, x, LABEL_BASELINE_Y);
+        drawHorizontalLabel(graphics, labels.top(), width, qrY - LABEL_GAP - metrics.getDescent());
+        drawHorizontalLabel(graphics, labels.bottom(), width, qrY + SIZE + LABEL_GAP + metrics.getAscent());
+        drawVerticalLabel(graphics, labels.left(), qrY, leftWidth / 2, true);
+        drawVerticalLabel(graphics, labels.right(), qrY, qrX + SIZE + SIDE_LABEL_WIDTH / 2, false);
     }
 
-    private void appendSvgLogo(StringBuilder svg, LogoAsset logo, String backgroundHex) {
+    private void drawHorizontalLabel(Graphics2D graphics, String label, int width, int baselineY) {
+        if (!hasText(label)) {
+            return;
+        }
+        FontMetrics metrics = graphics.getFontMetrics();
+        String text = truncateLabel(label);
+        int x = Math.max(24, (width - metrics.stringWidth(text)) / 2);
+        graphics.drawString(text, x, baselineY);
+    }
+
+    private void drawVerticalLabel(Graphics2D graphics, String label, int qrY, int centerX, boolean leftSide) {
+        if (!hasText(label)) {
+            return;
+        }
+        Graphics2D copy = (Graphics2D) graphics.create();
+        copy.setFont(graphics.getFont());
+        FontMetrics metrics = copy.getFontMetrics();
+        String text = truncateLabel(label);
+        int textWidth = metrics.stringWidth(text);
+        if (leftSide) {
+            copy.translate(centerX + metrics.getAscent() / 2, qrY + (SIZE + textWidth) / 2);
+            copy.rotate(-Math.PI / 2);
+        } else {
+            copy.translate(centerX - metrics.getAscent() / 2, qrY + (SIZE - textWidth) / 2);
+            copy.rotate(Math.PI / 2);
+        }
+        copy.drawString(text, 0, 0);
+        copy.dispose();
+    }
+
+    private void appendSvgLogo(StringBuilder svg, LogoAsset logo, String backgroundHex, int qrX, int qrY) {
         if (logo == null) {
             return;
         }
-        int boxX = (SIZE - LOGO_BOX_SIZE) / 2;
-        int boxY = (SIZE - LOGO_BOX_SIZE) / 2;
+        int boxX = qrX + (SIZE - LOGO_BOX_SIZE) / 2;
+        int boxY = qrY + (SIZE - LOGO_BOX_SIZE) / 2;
         int arc = 36;
         int maxLogo = LOGO_BOX_SIZE - 52;
         double scale = Math.min((double) maxLogo / logo.image().getWidth(), (double) maxLogo / logo.image().getHeight());
@@ -202,13 +245,38 @@ public class QrImageService {
                 .append("\" preserveAspectRatio=\"xMidYMid meet\"/>");
     }
 
-    private void appendSvgLabel(StringBuilder svg, String label, String foregroundHex) {
-        if (label == null || label.isBlank()) {
+    private void appendSvgLabels(StringBuilder svg, QrImageLabels labels, String foregroundHex, int width, int topHeight, int leftWidth, int qrX, int qrY) {
+        appendSvgHorizontalLabel(svg, labels.top(), width / 2, qrY - LABEL_GAP, "text-after-edge", foregroundHex);
+        appendSvgHorizontalLabel(svg, labels.bottom(), width / 2, qrY + SIZE + LABEL_GAP, "text-before-edge", foregroundHex);
+        appendSvgVerticalLabel(svg, labels.left(), leftWidth / 2, qrY + SIZE / 2, -90, foregroundHex);
+        appendSvgVerticalLabel(svg, labels.right(), qrX + SIZE + SIDE_LABEL_WIDTH / 2, qrY + SIZE / 2, 90, foregroundHex);
+    }
+
+    private void appendSvgHorizontalLabel(StringBuilder svg, String label, int x, int y, String dominantBaseline, String foregroundHex) {
+        if (!hasText(label)) {
             return;
         }
-        String text = label.length() > 36 ? label.substring(0, 36) : label;
-        svg.append("<text x=\"").append(SIZE / 2).append("\" y=\"").append(LABEL_BASELINE_Y)
-                .append("\" text-anchor=\"middle\" font-family=\"Roboto, Arial, Helvetica, sans-serif\" font-size=\"")
+        String text = truncateLabel(label);
+        svg.append("<text x=\"").append(x).append("\" y=\"").append(y)
+                .append("\" text-anchor=\"middle\" dominant-baseline=\"")
+                .append(dominantBaseline)
+                .append("\" font-family=\"Roboto, Arial, Helvetica, sans-serif\" font-size=\"")
+                .append(LABEL_FONT_SIZE)
+                .append("\" font-weight=\"700\" fill=\"")
+                .append(escape(foregroundOrBackground(foregroundHex))).append("\">")
+                .append(escape(text))
+                .append("</text>");
+    }
+
+    private void appendSvgVerticalLabel(StringBuilder svg, String label, int x, int y, int angle, String foregroundHex) {
+        if (!hasText(label)) {
+            return;
+        }
+        String text = truncateLabel(label);
+        svg.append("<text x=\"").append(x).append("\" y=\"").append(y)
+                .append("\" text-anchor=\"middle\" dominant-baseline=\"central\" transform=\"rotate(")
+                .append(angle).append(' ').append(x).append(' ').append(y)
+                .append(")\" font-family=\"Roboto, Arial, Helvetica, sans-serif\" font-size=\"")
                 .append(LABEL_FONT_SIZE)
                 .append("\" font-weight=\"700\" fill=\"")
                 .append(escape(foregroundOrBackground(foregroundHex))).append("\">")
@@ -293,6 +361,15 @@ public class QrImageService {
         return null;
     }
 
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String truncateLabel(String value) {
+        String trimmed = value.trim();
+        return trimmed.length() > 36 ? trimmed.substring(0, 36) : trimmed;
+    }
+
     public record GeneratedQrImage(byte[] png, String svg) {
         public byte[] svgBytes() {
             return svg.getBytes(StandardCharsets.UTF_8);
@@ -300,5 +377,8 @@ public class QrImageService {
     }
 
     private record LogoAsset(BufferedImage image, String dataUri) {
+    }
+
+    private record QrImageLabels(String top, String left, String right, String bottom) {
     }
 }
